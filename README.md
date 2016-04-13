@@ -3,7 +3,7 @@ WebSocket Hub for Kinect v2 and MIDI controllers
 
 This is a Visual Studio solution for a minimal HTTP Server based on OWIN to host a SignalR WebSocket hub to broadcast live skeletal tracking from the Kinect v2 sensor.
 
-It depends on the Kinect SDK 2.0 from Microsoft that must be installed on your computer, that limits the usage to Windows 8 or 10 only, sorry. Then again, the clients run in all web browser that support WebGL and WebSockets.
+It depends on the Kinect SDK 2.0 from Microsoft that must be installed on your computer, which limits the usage to Windows 8 or 10 only, sorry. Then again, the clients run in all web browser that support WebGL and WebSockets.
 
 The self-host mode requires elevated rights and to run it from the IDE you must start Visual Studio as Administrator. When you host the server yourself, don't forget to open the port in the Windows Firewall.
 
