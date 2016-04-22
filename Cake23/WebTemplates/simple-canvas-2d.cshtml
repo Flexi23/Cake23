@@ -1,0 +1,432 @@
+﻿<html>
+<head>
+	<title>Simple Canvas 2D scene</title>
+	<script src="@(Model.Host.URL)/Scripts/jquery-1.6.4.min.js"></script>
+	<script src="@(Model.Host.URL)/Scripts/jquery.signalR-2.2.0.min.js"></script>
+	<script src="@(Model.Host.URL)/signalr/hubs"></script>
+	<script type="text/javascript">
+		$(function () {
+			$.connection.hub.url = "@(Model.Host.URL)/signalr"; var kinect = $.connection.kinect2Hub;
+
+			kinect.client.onBody = function (bodyJson, projectionMappedPointsJson) {
+				body = JSON.parse(bodyJson);
+				// bodysampler = JSON.parse(projectionMappedPointsJson); // this would be the inbuilt mapping of the 3d coordinates to the 1080p video camera
+				body.head = {
+					x: (body.Joints["Head"].Position.X + body.Joints["Neck"].Position.X * 2) / 3,
+					y: (body.Joints["Head"].Position.Y + body.Joints["Neck"].Position.Y * 2) / 3,
+					z: (body.Joints["Head"].Position.Z + body.Joints["Neck"].Position.Z * 2) / 3
+				};
+				body.handRight = { "prevX": -1, "prevY": -1, "prevZ": -1, "grab": false, "point": false, "object": null };
+				switch (body.handRight.state = body.HandRightState) {
+					case 3:
+						body.handRight.grab = true;
+						break;
+					case 4:
+						body.handRight.point = true;
+						break;
+				}
+				body.handRight.id = "hr" + body.TrackingId;
+				//if (body.handRight.grab) {
+				body.handRight.x = (body.Joints["HandTipRight"].Position.X * 2 + body.Joints["HandRight"].Position.X + body.Joints["ThumbRight"].Position.X * 2) / 5;
+				body.handRight.y = (body.Joints["HandTipRight"].Position.Y * 2 + body.Joints["HandRight"].Position.Y + body.Joints["ThumbRight"].Position.Y * 2) / 5;
+				body.handRight.z = (body.Joints["HandTipRight"].Position.Z * 2 + body.Joints["HandRight"].Position.Z + body.Joints["ThumbRight"].Position.Z * 2) / 5;
+				//} else
+				if (body.handRight.point) {
+					body.handRight.x = body.Joints["HandTipRight"].Position.X;
+					body.handRight.y = body.Joints["HandTipRight"].Position.Y;
+					body.handRight.z = body.Joints["HandTipRight"].Position.Z;
+				}
+				body.handLeft = { "prevX": -1, "prevY": -1, "prevZ": -1, "grab": false, "point": false, "object": null };
+				switch (body.handLeft.state = body.HandLeftState) {
+					case 3:
+						body.handLeft.grab = true;
+						break;
+					case 4:
+						body.handLeft.point = true;
+						break;
+				}
+				body.handLeft.id = "hl" + body.TrackingId;
+				//if (body.handLeft.grab) {
+				body.handLeft.x = (body.Joints["HandTipLeft"].Position.X * 2 + body.Joints["HandLeft"].Position.X + body.Joints["ThumbLeft"].Position.X * 2) / 5;
+				body.handLeft.y = (body.Joints["HandTipLeft"].Position.Y * 2 + body.Joints["HandLeft"].Position.Y + body.Joints["ThumbLeft"].Position.Y * 2) / 5;
+				body.handLeft.z = (body.Joints["HandTipLeft"].Position.Z * 2 + body.Joints["HandLeft"].Position.Z + body.Joints["ThumbLeft"].Position.Z * 2) / 5;
+				//} else
+				if (body.handLeft.point) {
+					body.handLeft.x = body.Joints["HandTipLeft"].Position.X;
+					body.handLeft.y = body.Joints["HandTipLeft"].Position.Y;
+					body.handLeft.z = body.Joints["HandTipLeft"].Position.Z;
+				}
+				var trackingObject = getTrackingObject(body.TrackingId);
+				if (trackingObject.body == null) {
+					trackingObject.body = body;
+				} else {
+					var oldBody = trackingObject.body;
+					body.handRight.prevX = oldBody.handRight.x;
+					body.handRight.prevY = oldBody.handRight.y;
+					body.handRight.prevZ = oldBody.handRight.z;
+					body.handLeft.prevX = oldBody.handLeft.x;
+					body.handLeft.prevY = oldBody.handLeft.y;
+					body.handLeft.prevZ = oldBody.handLeft.z;
+					if (oldBody.handRight.grab) {
+						body.handRight.object = oldBody.handRight.object;
+					}
+					if (oldBody.handLeft.grab) {
+						body.handLeft.object = oldBody.handLeft.object;
+					}
+				}
+				trackingObject.body = body; // update
+			};
+			kinect.client.onBodies = function (trackingIdsJson, frame) {
+				var trackingIds = null;
+				if (trackingIdsJson != null) {
+					trackingIds = JSON.parse(trackingIdsJson);
+				}
+				onBodies(trackingObjects, trackingIds, frame);
+			};
+			kinect.client.onFace = onFace;
+
+			var midi = $.connection.midiHub;
+			midi.client.onMidi = onMidi;
+
+			$.connection.hub.start().done(function () {
+			});
+
+		});
+
+		var trackingObjects = [], bodyFrameIndex;
+		function getTrackingObject(id) {
+			var hit = null;
+			trackingObjects.forEach(function (trackingObject) { // perhaps not the most efficient way, but don't expect too many tracked bodies anyway
+				if (trackingObject.id == id) {
+					hit = trackingObject;
+				}
+			});
+			if (hit) {
+				return hit;
+			}
+			// create new trackingObject
+			console.log("create tracking object " + id);
+			var trackingObject = { id: id, body: null }; // init as object that can be easily extended with additional properties
+			trackingObjects.push(trackingObject);
+			return trackingObject;
+		}
+
+		// Kinect body frame arrived
+		var activeTrackingObjects = [];
+		function onBodies(trackingObjects, trackedBodyIds, frame) {
+			bodyFrameIndex = frame;
+			activeTrackingObjects = [];
+			trackedBodyIds.forEach(function (id) {
+				var trackingObject = getTrackingObject(id);
+				activeTrackingObjects.push(trackingObject);
+			});
+		}
+
+		var midi = [];
+		function onMidi(channel, data1, data2) {
+			//for now, just ignore the channel information
+			midi[data1] = data2 / 127.;
+			console.log("midi msg: channel " + channel + " , data: " + data1 + " => " + data2);
+		}
+
+		var faces = [];
+
+		function onFace(verticesJSON, status, TrackingId) {
+			var trackingObject = getTrackingObject(TrackingId);
+			var before = Date.now();
+			var vertices = JSON.parse(verticesJSON);
+			var dur = Date.now() - before;
+			var face = faces[TrackingId];
+			if (face == undefined) {
+				face = {
+					points2d: []
+				};
+				for (var i = 0; i < 1347; i++) {
+					face.points2d[i] = {};
+				}
+				faces[TrackingId] = face;
+			}
+
+			if (trackingObject.body) {
+				var head = trackingObject.body.head;
+				if (head) {
+					var p2d = {};
+					var p3d = {};
+					var scale = 1.3;
+					for (var i = 0; i < 1347; i++) {
+
+						p3d.x = head.x + (vertices[i * 3 + 0] - head.x) * scale;
+						p3d.y = head.y + (vertices[i * 3 + 1] - head.y) * scale;
+						p3d.z = head.z + (vertices[i * 3 + 2] - head.z) * scale;
+
+						project(p3d, p2d);
+
+						var shape = face.points2d[i];
+
+						shape.x = p2d.x;
+						shape.y = p2d.y;
+
+						if (shape.update) {
+							shape.update();
+						}
+					}
+				}
+			}
+			//console.log("face mesh deserialize and update time: " + dur);
+		}
+
+		function getMidi(id) {
+
+			if (midi[id] == undefined)
+				midi[id] = 0;
+
+			return midi[id];
+		}
+
+		var joints = ["SpineBase", "SpineMid", "Neck", "Head", "ShoulderLeft",
+			"ElbowLeft", "WristLeft", "HandLeft", "ShoulderRight", "ElbowRight",
+			"WristRight", "HandRight", "HipLeft", "KneeLeft", "AnkleLeft",
+			"FootLeft", "HipRight", "KneeRight", "AnkleRight", "FootRight",
+			"SpineShoulder", "HandTipLeft", "ThumbLeft", "HandTipRight", "ThumbRight"];
+
+		var members = [
+//		["SpineBase", "SpineMid"],
+//		["SpineMid", "SpineShoulder"],
+			["SpineShoulder", "Neck"],
+			["Neck", "Head"],
+			["SpineShoulder", "ShoulderLeft"],
+			["ShoulderLeft", "ElbowLeft"],
+			["ElbowLeft", "WristLeft"],
+			["WristLeft", "HandLeft"],
+			["HandLeft", "HandTipLeft"],
+			["HandLeft", "ThumbLeft"],
+//		["SpineBase", "HipLeft"],
+			["SpineBase", "KneeLeft"],
+			["SpineBase", "KneeRight"],
+//		["HipLeft", "ShoulderLeft"],
+			["HipLeft", "KneeLeft"],
+			["KneeLeft", "AnkleLeft"],
+			["AnkleLeft", "FootLeft"],
+			["SpineShoulder", "ShoulderRight"],
+			["ShoulderRight", "ElbowRight"],
+			["ElbowRight", "WristRight"],
+			["WristRight", "HandRight"],
+			["HandRight", "HandTipRight"],
+			["HandRight", "ThumbRight"],
+//		["SpineBase", "HipRight"],
+//		["HipRight", "ShoulderRight"],
+			["HipRight", "KneeRight"],
+			["KneeRight", "AnkleRight"],
+			["AnkleRight", "FootRight"],
+			["SpineMid", "ShoulderRight"],
+			["SpineMid", "ShoulderLeft"],
+			["SpineMid", "HipRight"],
+			["SpineMid", "HipLeft"]
+		];
+
+		// perspective projection (virtual camera 
+		function project(p3d, p2d) {
+			p2d.x = p3d.x;
+			p2d.y = p3d.y;
+			var w = Math.atan2(-p3d.x, -p3d.y);
+			var l = Math.sqrt(p3d.x * p3d.x + p3d.y * p3d.y);
+			var d = 3.;
+			var zoom = 3;
+			var p = Math.tan(Math.PI / 2 + Math.atan2(d + p3d.z, l));
+			d = Math.sqrt(p3d.x * p3d.x + p3d.y * p3d.y + (p3d.z + d) * (p3d.z + d));
+			p2d.x = zoom * Math.sin(w) * p / aspectx + 0.5;
+			p2d.y = zoom * Math.cos(w) * p / aspecty + 0.5;
+			p2d.y = 1 - p2d.y;
+			p2d.x *= sizeX;
+			p2d.y *= sizeY;
+		}
+
+		var Joint = function () {
+			this.x = 0.5;
+			this.y = 0.5;
+			this.z = 1;
+			this.state = 0;
+			this.old = {};
+			this.old.x = 0.5;
+			this.old.y = 0.5;
+			this.old.z = 1;
+			this.old.state = 0;
+			this.update = function (pos) {
+				this.old.x = this.x;
+				this.old.y = this.y;
+				this.old.z = this.z;
+				this.old.state = this.state;
+				this.x = pos.x;
+				this.y = pos.y;
+				this.z = pos.z;
+				this.state = pos.state;
+			};
+		};
+
+		var Bone = function (joint1, joint2) {
+			this.joint1 = joint1;
+			this.joint2 = joint2;
+		}
+
+		var StickMan = function () {
+			this.joints = [];
+			this.bones = [];
+			var self = this;
+			joints.forEach(function (name) {
+				self.joints[name] = new Joint();
+			});
+			members.forEach(function (member) {
+				self.bones[member] = new Bone(self.joints[member[0]], self.joints[member[1]]);
+			});
+		};
+
+		function updateStickMen() {
+			activeTrackingObjects.forEach(function (trackingObject) {
+
+				var stickMan = trackingObject.stickMan;
+				if (stickMan == null) {
+					stickMan = new StickMan();
+					trackingObject.stickMan = stickMan;
+				}
+
+				joints.forEach(function (id) {
+					stickMan.joints[id].update({
+						x: trackingObject.body.Joints[id].Position.X,
+						y: trackingObject.body.Joints[id].Position.Y,
+						z: trackingObject.body.Joints[id].Position.Z,
+						state: body.Joints[id].TrackingState
+					});
+				});
+			});
+		}
+
+		function drawStickMen(context) {
+			activeTrackingObjects.forEach(function (trackingObject) {
+
+				var stickMan = trackingObject.stickMan;
+				if (stickMan == null) {
+					stickMan = new StickMan();
+					trackingObject.stickMan = stickMan;
+				}
+
+				// draw the bones
+				context.strokeStyle = "#FFF";
+				context.beginPath();
+
+				members.forEach(function (member) {
+					var joint1 = stickMan.joints[member[0]];
+					var joint2 = stickMan.joints[member[1]];
+					if (joint1.state == 2 && joint2.state == 2) {
+						var p1 = {};
+						var p2 = {};
+						project(joint1, p1);
+						project(joint2, p2);
+						context.moveTo(p1.x, p1.y);
+						context.lineTo(p2.x, p2.y);
+					}
+				});
+
+				context.stroke();
+
+				// draw the hands
+
+				var handLeft = {};
+				var handRight = {};
+				project(trackingObject.body.handLeft, handLeft);
+				project(trackingObject.body.handRight, handRight);
+
+				context.beginPath();
+				context.strokeStyle = "#FFF";
+				if (trackingObject.body.handLeft.grab) {
+					context.strokeStyle = "#0F0";
+				}
+				context.rect(handLeft.x - 25, handLeft.y - 25, 50, 50);
+				context.stroke();
+
+				context.beginPath();
+				context.strokeStyle = "#FFF";
+				if (trackingObject.body.handRight.grab) {
+					context.strokeStyle = "#0F0";
+				}
+				context.rect(handRight.x - 25, handRight.y - 25, 50, 50);
+				context.stroke();
+
+				/*
+				joints.forEach(function (id) {
+					var joint = stickMan.joints[id];
+				});
+				*/
+
+				// draw the face
+				context.fillStyle = "#FFF";
+				var face = faces[trackingObject.id];
+				if (face) {
+					face.points2d.forEach(function (p) {
+						context.fillRect(p.x, p.y, 1, 1);
+					});
+				}
+			});
+		}
+
+		var c, ctx;
+		var sizeX = 1024;
+		var sizeY = 512;
+
+		var viewX = 1024;
+		var viewY = 512;
+
+		var aspectx = 2;
+		var aspecty = 1;
+
+		function load() {
+			c = document.getElementById("c");
+			c.width = sizeX;
+			c.height = sizeY;
+			ctx = c.getContext("2d");
+			window.requestAnimationFrame(anim);
+		}
+
+		function anim(dt) {
+			window.requestAnimationFrame(anim);
+			updateStickMen();
+			ctx = c.getContext("2d");
+
+			ctx.clearRect(0, 0, sizeX, sizeY);
+
+			drawStickMen(ctx);
+
+		}
+	</script>
+	<style type="text/css">
+		body {
+			background-color: #000000;
+			color: #FFFFFF;
+			font-family: 'Lucida Console';
+			font-size: 23pt;
+		}
+
+		#c {
+			position: absolute;
+			top: 0;
+			left: 0;
+			z-index: -1;
+		}
+
+		a {
+			color: #FFFFFF;
+			font-weight: bold;
+		}
+
+		#desc {
+			background-color: rgba(0, 0, 0, 0.2);
+			width: 1024;
+		}
+	</style>
+</head>
+<body onload="load()">
+	<div id="desc">
+		Simple Canvas 2D scene
+	</div>
+	<canvas id="c"></canvas>
+</body>
+</html>

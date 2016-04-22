@@ -1,4 +1,5 @@
-﻿using Microsoft.Kinect;
+﻿using Cake23.Util;
+using Microsoft.Kinect;
 using Microsoft.Kinect.Face;
 using System;
 using System.Collections.Generic;
@@ -11,8 +12,15 @@ namespace Cake23.Connection.Clients.Kinect2
 {
 	public delegate void FaceFrameAsJSON(string verticesJSON, string status, ulong TrackingId);
 
-	public class Face : IDisposable
+	public class Face : IDisposable, IHasLogger
 	{
+		public string ClientName
+		{
+			get { return "Face Model"; }
+		}
+
+		public Logger Logger { get; set; }
+
 		private HighDefinitionFaceFrameSource highDefinitionFaceFrameSource = null;
 		private HighDefinitionFaceFrameReader highDefinitionFaceFrameReader = null;
 		private FaceAlignment currentFaceAlignment = null;
@@ -51,6 +59,22 @@ namespace Cake23.Connection.Clients.Kinect2
 		private void UpdateMesh()
 		{
 			var vertices = currentFaceModel.CalculateVerticesForAlignment(currentFaceAlignment);
+			var sb = new StringBuilder();
+			/*
+			sb.Append("[");
+			for (int i = 0; i < currentFaceModel.TriangleIndices.Count; i++)
+			{
+				var index = currentFaceModel.TriangleIndices[i];
+				sb.AppendFormat(ci, "{0}", index);
+				if (i != currentFaceModel.TriangleIndices.Count - 1)
+				{
+					sb.Append(",");
+				}
+			}
+			sb.Append("]");
+			var indicesJson = sb.ToString();
+			 * indicesJson is a static resource which i have exported here: https://gist.github.com/Flexi23/43266257d97f9df249839168390d7159
+			 */
 			if (vertexData == null)
 			{
 				vertexData = new float[vertices.Count * 3];
@@ -65,7 +89,7 @@ namespace Cake23.Connection.Clients.Kinect2
 
 			if (AsJSON != null)
 			{
-				var sb = new StringBuilder();
+				sb = new StringBuilder();
 				sb.Append("[");
 				for (int i = 0; i < vertices.Count * 3; i++)
 				{
@@ -91,6 +115,7 @@ namespace Cake23.Connection.Clients.Kinect2
 			faceModelBuilder = null;
 
 			status = "Capture Complete";
+			this.Log(status);
 		}
 
 		private void HdFaceSource_TrackingIdLost(object sender, TrackingIdLostEventArgs e)
@@ -282,6 +307,7 @@ namespace Cake23.Connection.Clients.Kinect2
 			newStatus += ", " + GetCollectionStatusText(collectionStatus);
 
 			status = newStatus;
+			//this.Log(status);
 		}
 
 		public void Dispose()

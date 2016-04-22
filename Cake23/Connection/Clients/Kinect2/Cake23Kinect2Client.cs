@@ -37,10 +37,11 @@ namespace Cake23.Connection.Clients.Kinect2
 			coordinateMapper = kinectSensor.CoordinateMapper;
 			bodyFrameReader = kinectSensor.BodyFrameSource.OpenReader();
 			kinectSensor.IsAvailableChanged += Sensor_IsAvailableChanged;
-			//faceTracker = new Face(kinectSensor, bodyFrameReader);
-			//faceTracker.AsJSON += faceJSON;
+			faceTracker = new Face(kinectSensor, bodyFrameReader);
+			faceTracker.AsJSON += faceJSON;
 			kinectSensor.Open();			
 			this.Log("open");
+			faceTracker.Logger = this.Logger;
 		}
 
 		public override void Connect(object obj = null)

@@ -16,7 +16,7 @@ namespace Cake23.Connection.Clients.Kinect2
 
 		public void OnFace(string verticesJSON, string status, ulong TrackingId)
 		{
-			//Clients.All.onFace(verticesJSON, status, TrackingId);
+			Clients.All.onFace(verticesJSON, status, TrackingId);
 		}
 	}
 }

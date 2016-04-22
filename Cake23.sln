@@ -1,8 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
-MinimumVisualStudioVersion = 10.0.40219.1
+# Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cake23", "Cake23\Cake23.csproj", "{C05BBD27-6FD9-4DF6-A22B-ADBD562D845E}"
 EndProject
 Global
@@ -15,8 +13,8 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C05BBD27-6FD9-4DF6-A22B-ADBD562D845E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C05BBD27-6FD9-4DF6-A22B-ADBD562D845E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C05BBD27-6FD9-4DF6-A22B-ADBD562D845E}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{C05BBD27-6FD9-4DF6-A22B-ADBD562D845E}.Debug|Any CPU.Build.0 = Debug|x86
 		{C05BBD27-6FD9-4DF6-A22B-ADBD562D845E}.Debug|x64.ActiveCfg = Debug|x64
 		{C05BBD27-6FD9-4DF6-A22B-ADBD562D845E}.Debug|x64.Build.0 = Debug|x64
 		{C05BBD27-6FD9-4DF6-A22B-ADBD562D845E}.Debug|x86.ActiveCfg = Debug|x86

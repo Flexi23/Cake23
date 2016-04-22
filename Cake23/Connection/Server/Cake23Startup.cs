@@ -1,4 +1,5 @@
 ﻿using Microsoft.Owin;
+using Microsoft.Owin.Cors;
 using Microsoft.Owin.FileSystems;
 using Microsoft.Owin.StaticFiles;
 using Owin;
@@ -18,8 +19,6 @@ namespace Cake23.Connection.Server
 			app.UseErrorPage();
 #endif
 
-			// considering CORS
-
 			var staticWebContentPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\WebStaticContent";
 			var physicalFileSystem = new PhysicalFileSystem(staticWebContentPath);
 			var options = new FileServerOptions();
@@ -31,6 +30,9 @@ namespace Cake23.Connection.Server
 			options.StaticFileOptions.FileSystem = physicalFileSystem;
 			options.StaticFileOptions.ServeUnknownFileTypes = true;
 			options.DefaultFilesOptions.DefaultFileNames = new[] { "index.html" };
+
+			// TODO: bind a checkbox to opt-in
+			app.UseCors(CorsOptions.AllowAll);
 
 			app.UseFileServer(options);
 			app.MapSignalR();
