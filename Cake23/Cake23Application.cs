@@ -57,6 +57,7 @@ namespace Cake23
 			set
 			{
 				_hostname = value;
+				Cake23Host.GetInstance().UpdateURL(Hostname, Port);
 				OnPropertyChanged(() => Hostname);
 			}
 		}
@@ -84,6 +85,7 @@ namespace Cake23
 			set
 			{
 				_port = value;
+				Cake23Host.GetInstance().UpdateURL(Hostname, Port);
 				OnPropertyChanged(() => Port);
 			}
 		}

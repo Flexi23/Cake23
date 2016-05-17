@@ -23,7 +23,10 @@ namespace Cake23.Connection
 		{
 			try
 			{
-				hubProxy.Invoke(method, args);
+				if (IsConnected)
+				{
+					hubProxy.Invoke(method, args);
+				}
 			}
 			catch (Exception x)
 			{
@@ -74,7 +77,7 @@ namespace Cake23.Connection
 		{
 			ConnectAsync();
 		}
-		
+
 		public virtual void Unconnect(object obj = null)
 		{
 			if (IsConnected)
@@ -89,7 +92,7 @@ namespace Cake23.Connection
 			Unconnect();
 			Connect();
 		}
-		
+
 		public bool CanConnect(object arg = null)
 		{
 			return !IsConnected;

@@ -55,11 +55,13 @@ namespace Cake23.Connection.Server
 				hostname = "localhost";
 			}
 
+			UpdateURL(hostname, port);
+
 			if (owin == null)
 			{
 				try
 				{
-					owin = Microsoft.Owin.Hosting.WebApp.Start<Cake23Startup>(URL = "http://" + hostname + ":" + port);
+					owin = Microsoft.Owin.Hosting.WebApp.Start<Cake23Startup>(URL);
 					this.Log("server started: " + URL);
 					_connection.Connect();
 				}
@@ -68,6 +70,11 @@ namespace Cake23.Connection.Server
 					this.Log("couldn't start: " + x);
 				}
 			}
+		}
+
+		public void UpdateURL(string hostname, int port)
+		{
+			URL = "http://" + hostname + ":" + port;
 		}
 
 		public void Stop()
