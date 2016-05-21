@@ -238,6 +238,7 @@
     </None>
     <AppDesigner Include="Properties\" />
     <None Include="WebTemplates\burningman.cshtml" />
+    <None Include="WebTemplates\drag-and-drop.cshtml" />
     <None Include="WebTemplates\particleball.cshtml" />
     <None Include="WebTemplates\simple-canvas-2d.cshtml" />
     <None Include="WebTemplates\expansivereaction.cshtml" />
