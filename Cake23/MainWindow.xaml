@@ -34,6 +34,7 @@
 			<Button Command="{Binding Path=HostCommand}">Host</Button>
 			<Button Command="{Binding Path=ConnectCommand}">Connect</Button>
 			<Button Command="{Binding Path=StopCommand}">Stop</Button>
+			<Button Command="{Binding Path=GetPublicIPCommand}">Get Public IP</Button>
 		</StackPanel>
 
 	</Grid>

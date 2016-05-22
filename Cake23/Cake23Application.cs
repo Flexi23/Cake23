@@ -2,6 +2,7 @@
 using Cake23.Connection.Clients;
 using Cake23.Connection.Server;
 using Cake23.Util;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -123,6 +124,12 @@ namespace Cake23
 
 		private void ConnectAll(object obj)
 		{
+			if (!host.IsListening)
+			{
+				// in case we're not self-hosting, we must first establish the "say hi" connection.
+				host.Connection.Connect();
+			}
+
 			if (CanConnect(obj))
 			{
 				_remoteURL = "http://" + Hostname + ":" + Port;
@@ -202,19 +209,28 @@ namespace Cake23
 			OnPropertyChanged(() => CanEditHostname);
 		}
 
-		public static IPAddress GetIPAddress(string hostName)
+		private ICommand _getPublicIPCmd;
+		public ICommand GetPublicIPCommand
 		{
-			Ping ping = new Ping();
-			var replay = ping.Send(hostName);
-
-			if (replay.Status == IPStatus.Success)
+			get
 			{
-				return replay.Address;
+				if (_getPublicIPCmd == null)
+				{
+					_getPublicIPCmd = new DelegateCommand(GetPublicIP);
+				}
+				return _getPublicIPCmd;
 			}
-			return null;
+			private set { _getPublicIPCmd = value; }
 		}
-
-		public string GetPublicIP()
+		
+		private void GetPublicIP(object obj)
+		{
+			var getPublicIP = new BackgroundWorker();
+			getPublicIP.DoWork += getPublicIP_DoWork;
+			getPublicIP.RunWorkerAsync();
+		}
+		
+		public string RequestPublicIP()
 		{
 			var request = WebRequest.Create("http://checkip.dyndns.org/");
 			var response = request.GetResponse();
@@ -226,27 +242,19 @@ namespace Cake23
 			return direction.Substring(first, last - first);
 		}
 
+		void getPublicIP_DoWork(object sender, DoWorkEventArgs e)
+		{
+			this.Log("according to dyndns.org, your public IP is " + RequestPublicIP());
+		}
+
 		public Cake23Application()
 		{
 			host.Logger = this.Logger = new Logger();
-
 			Title = "Cake23 | WebSocket Hub for Kinect v2 and MIDI controllers";
-
 			Hostname = Dns.GetHostName();
 			Port = 9000;
-
-			UserName = "Flexi23";
-
-			var getPublicIP = new BackgroundWorker();
-			getPublicIP.DoWork += getPublicIP_DoWork;
-			//getPublicIP.RunWorkerAsync();
+			UserName = Environment.UserName + "@" + Hostname;
 		}
-
-		void getPublicIP_DoWork(object sender, DoWorkEventArgs e)
-		{
-			UserName = GetPublicIP();
-		}
-
 
 		internal void Setup()
 		{
