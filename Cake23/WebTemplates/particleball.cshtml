@@ -16,7 +16,7 @@
 					y: (body.Joints["Head"].Position.Y + body.Joints["Neck"].Position.Y * 2) / 3,
 					z: (body.Joints["Head"].Position.Z + body.Joints["Neck"].Position.Z * 2) / 3
 				};
-				body.handRight = { "prevX": -1, "prevY": -1, "prevZ": -1, "grab": false, "point": false, "object": null };
+				body.handRight = { "old": { "x": -1, "y": -1, "z": -1 }, "grab": false, "point": false, "object": null };
 				switch (body.handRight.state = body.HandRightState) {
 					case 3:
 						body.handRight.grab = true;
@@ -36,7 +36,7 @@
 					body.handRight.y = body.Joints["HandTipRight"].Position.Y;
 					body.handRight.z = body.Joints["HandTipRight"].Position.Z;
 				}
-				body.handLeft = { "prevX": -1, "prevY": -1, "prevZ": -1, "grab": false, "point": false, "object": null };
+				body.handLeft = { "old": { "x": -1, "y": -1, "z": -1 }, "grab": false, "point": false, "object": null };
 				switch (body.handLeft.state = body.HandLeftState) {
 					case 3:
 						body.handLeft.grab = true;
@@ -61,12 +61,12 @@
 					trackingObject.body = body;
 				} else {
 					var oldBody = trackingObject.body;
-					body.handRight.prevX = oldBody.handRight.x;
-					body.handRight.prevY = oldBody.handRight.y;
-					body.handRight.prevZ = oldBody.handRight.z;
-					body.handLeft.prevX = oldBody.handLeft.x;
-					body.handLeft.prevY = oldBody.handLeft.y;
-					body.handLeft.prevZ = oldBody.handLeft.z;
+					body.handRight.old.x = oldBody.handRight.x;
+					body.handRight.old.y = oldBody.handRight.y;
+					body.handRight.old.z = oldBody.handRight.z;
+					body.handLeft.old.x = oldBody.handLeft.x;
+					body.handLeft.old.y = oldBody.handLeft.y;
+					body.handLeft.old.z = oldBody.handLeft.z;
 					if (oldBody.handRight.grab) {
 						body.handRight.object = oldBody.handRight.object;
 					}
@@ -268,7 +268,7 @@
 			this.joint2 = joint2;
 		}
 
-		var StickMan = function () {
+		var Stickman = function () {
 			this.joints = [];
 			this.bones = [];
 			var self = this;
@@ -283,14 +283,14 @@
 		function updateStickMen() {
 			activeTrackingObjects.forEach(function (trackingObject) {
 
-				var stickMan = trackingObject.stickMan;
-				if (stickMan == null) {
-					stickMan = new StickMan();
-					trackingObject.stickMan = stickMan;
+				var stickman = trackingObject.stickman;
+				if (stickman == null) {
+					stickman = new Stickman();
+					trackingObject.stickman = stickman;
 				}
 
 				joints.forEach(function (id) {
-					stickMan.joints[id].update({
+					stickman.joints[id].update({
 						x: trackingObject.body.Joints[id].Position.X,
 						y: trackingObject.body.Joints[id].Position.Y,
 						z: trackingObject.body.Joints[id].Position.Z,
@@ -303,10 +303,10 @@
 		function drawStickMen(context) {
 			activeTrackingObjects.forEach(function (trackingObject) {
 
-				var stickMan = trackingObject.stickMan;
-				if (stickMan == null) {
-					stickMan = new StickMan();
-					trackingObject.stickMan = stickMan;
+				var stickman = trackingObject.stickman;
+				if (stickman == null) {
+					stickman = new Stickman();
+					trackingObject.stickman = stickman;
 				}
 
 				// draw the bones
@@ -314,8 +314,8 @@
 				context.beginPath();
 
 				members.forEach(function (member) {
-					var joint1 = stickMan.joints[member[0]];
-					var joint2 = stickMan.joints[member[1]];
+					var joint1 = stickman.joints[member[0]];
+					var joint2 = stickman.joints[member[1]];
 					if (joint1.state == 2 && joint2.state == 2) {
 						var p1 = {};
 						var p2 = {};
@@ -326,6 +326,7 @@
 					}
 				});
 
+				context.lineWidth = 1 / 256;
 				context.stroke();
 
 				// draw the hands
@@ -341,6 +342,7 @@
 					context.strokeStyle = "#0F0";
 				}
 				context.rect(handLeft.x - 25, handLeft.y - 25, 50, 50);
+				context.lineWidth = 1 / 32
 				context.stroke();
 
 				context.beginPath();
@@ -349,11 +351,12 @@
 					context.strokeStyle = "#0F0";
 				}
 				context.rect(handRight.x - 25, handRight.y - 25, 50, 50);
+				context.lineWidth = 1 / 32
 				context.stroke();
 
 				/*
 				joints.forEach(function (id) {
-					var joint = stickMan.joints[id];
+					var joint = stickman.joints[id];
 				});
 				*/
 
@@ -362,358 +365,451 @@
 				var face = faces[trackingObject.id];
 				if (face) {
 					face.points2d.forEach(function (p) {
-						context.fillRect(p.x, p.y, 1, 1);
+						context.fillRect(p.x, p.y, 1 / 64, 1 / 64);
 					});
 				}
 			});
 		}
 	</script>
 	<script id="shader-vs" type="x-shader/x-vertex"> 
-	attribute vec3 aPos;
-	attribute vec2 aTexCoord;
-	varying   vec2 uv;
-	varying vec2 uv_orig;
-	void main(void) {
-		 gl_Position = vec4(aPos, 1.);
-		 uv = aTexCoord;
-		 uv_orig = uv;
-	}
+		attribute vec3 aPos;
+		attribute vec2 aTexCoord;
+		varying   vec2 uv;
+		void main(void) {
+			gl_Position = vec4(aPos, 1.);
+			uv = aTexCoord;
+		}
 	</script>
 
 	<script id="shader-fs-inc" type="x-shader/x-fragment">
-	#ifdef GL_ES
-	precision mediump float;
-	#endif
+		#ifdef GL_ES
+		precision mediump float;
+		#endif
 
-	varying vec2 uv;
-	varying vec2 uv_orig;
-		
-	bool is_onscreen(vec2 uv){
-		return (uv.x < 1.) && (uv.x > 0.) && (uv.y < 1.) && (uv.y > 0.);
-	}
+		varying vec2 uv;
+		uniform vec2 texSize;
+		uniform vec2 pixelSize;
+		uniform vec2 aspect;
+		uniform vec2 scale;
 
-	float border(vec2 uv, float border, vec2 texSize){
-		uv*=texSize;
-		return (uv.x<border || uv.x>texSize.x-border || uv.y<border || uv.y >texSize.y-border) ? 1.:.0;
-	}
+		uniform vec2 mouse;
+		uniform vec2 mouseV;
 
-	#define pi 3.141592653589793238462643383279
-	#define pi_inv 0.318309886183790671537767526745
-	#define pi2_inv 0.159154943091895335768883763372
+		uniform float fps;
+		uniform float time;
+		uniform float frame;
 
-	float border(vec2 domain, float thickness){
-		 vec2 uv = fract(domain-vec2(0.5));
-		 uv = min(uv,1.-uv)*2.;
-		 return clamp(max(uv.x,uv.y)-1.+thickness,0.,1.)/(thickness);
-	}
+		uniform vec4 rnd;
+		uniform vec4 rainbow;
 
-	float square_mask(vec2 domain){
-		return (domain.x <= 1. && domain.x >= 0. && domain.y <= 1. && domain.y >= 0.) ? 1. : 0.; 
-	}
+		uniform vec4 mover0;
+		uniform int moverState0;
+		uniform vec4 mover1;
+		uniform int moverState1;
+		uniform vec4 mover2;
+		uniform int moverState2;
+		uniform vec4 mover3;
+		uniform int moverState3;
+		uniform vec4 mover4;
+		uniform int moverState4;
+		uniform vec4 mover5;
+		uniform int moverState5;
+		uniform vec4 mover6;
+		uniform int moverState6;
+		uniform vec4 mover7;
+		uniform int moverState7;
+		uniform vec4 mover8;
+		uniform int moverState8;
+		uniform vec4 mover9;
+		uniform int moverState9;
+		uniform vec2 head0;
+		uniform vec4 col0;
+		uniform vec2 head1;
+		uniform vec4 col1;
+		uniform vec2 head2;
+		uniform vec4 col2;
+		uniform vec2 head3;
+		uniform vec4 col3;
+		uniform vec2 head4;
+		uniform vec4 col4;
+		uniform vec2 head5;
+		uniform vec4 col5;
+		uniform vec2 head6;
+		uniform vec4 col6;
+		uniform vec2 head7;
+		uniform vec4 col7;
+		uniform vec2 head8;
+		uniform vec4 col8;
+		uniform vec2 head9;
+		uniform vec4 col9;
 
-	vec2 complex_mul(vec2 factorA, vec2 factorB){
-		 return vec2( factorA.x*factorB.x - factorA.y*factorB.y, factorA.x*factorB.y + factorA.y*factorB.x);
-	}
+		uniform vec4 midifader1;
+		uniform vec4 midifader2;
+		uniform vec4 midiknob1;
+		uniform vec4 midiknob2;
 
-	vec2 spiralzoom(vec2 domain, vec2 center, float n, float spiral_factor, float zoom_factor, vec2 pos){
-		vec2 uv = domain - center;
-		float d = length(uv);
-		return vec2( atan(uv.y, uv.x)*n*pi2_inv + d*spiral_factor, -log(d)*zoom_factor) + pos;
-	}
-
-	vec2 complex_div(vec2 numerator, vec2 denominator){
-		 return vec2( numerator.x*denominator.x + numerator.y*denominator.y,
-									numerator.y*denominator.x - numerator.x*denominator.y)/
-						vec2(denominator.x*denominator.x + denominator.y*denominator.y);
-	}
-
-	// HSL to RGB converter code from http://www.gamedev.net/topic/465948-hsl-shader-glsl-code/
-	float Hue_2_RGB(float v1, float v2, float vH )
-	{
-		float ret;
-		 if ( vH < 0.0 )
-			 vH += 1.0;
-		 if ( vH > 1.0 )
-			 vH -= 1.0;
-		 if ( ( 6.0 * vH ) < 1.0 )
-			 ret = ( v1 + ( v2 - v1 ) * 6.0 * vH );
-		 else if ( ( 2.0 * vH ) < 1.0 )
-			 ret = ( v2 );
-		 else if ( ( 3.0 * vH ) < 2.0 )
-			 ret = ( v1 + ( v2 - v1 ) * ( ( 2.0 / 3.0 ) - vH ) * 6.0 );
-		 else
-			 ret = v1;
-		 return ret;
-	}
-
-	vec3 hsl2rgb(float H, float S, float L){
-		float var_2, var_1, R, G, B;	
-		if (S == 0.0)
-		{
-			 R = L;
-			 G = L;
-			 B = L;
+		vec2 uv_zoom_exp(vec2 uv, vec2 center, vec2 aspect, float zoom, float zoom_exp, float zoom_factor){
+			vec2 uv_correct = 0.5 + (uv -0.5)* aspect;
+			vec2 center_correct = 0.5 + ( center - 0.5) * aspect;
+			vec2 zoom_distorted = center_correct + (uv_correct - center_correct)*(1. - zoom * pow(zoom_exp, zoom_factor*length(uv_correct-center_correct)));
+			return 0.5 + (zoom_distorted - 0.5) / aspect;
+		}	
+					
+		bool is_onscreen(vec2 uv){
+			return (uv.x < 1.) && (uv.x > 0.) && (uv.y < 1.) && (uv.y > 0.);
 		}
-		else
+
+		float border(vec2 uv, float border, vec2 texSize){
+			uv*=texSize;
+			return (uv.x<border || uv.x>texSize.x-border || uv.y<border || uv.y >texSize.y-border) ? 1.:.0;
+		}
+
+		#define pi 3.141592653589793238462643383279
+		#define pi_inv 0.318309886183790671537767526745
+		#define pi2_inv 0.159154943091895335768883763372
+
+		float border(vec2 domain, float thickness){
+			 vec2 uv = fract(domain-vec2(0.5));
+			 uv = min(uv,1.-uv)*2.;
+			 return clamp(max(uv.x,uv.y)-1.+thickness,0.,1.)/(thickness);
+		}
+
+		float square_mask(vec2 domain){
+			return (domain.x <= 1. && domain.x >= 0. && domain.y <= 1. && domain.y >= 0.) ? 1. : 0.; 
+		}
+
+		vec2 complex_mul(vec2 factorA, vec2 factorB){
+			 return vec2( factorA.x*factorB.x - factorA.y*factorB.y, factorA.x*factorB.y + factorA.y*factorB.x);
+		}
+
+		vec2 spiralzoom(vec2 domain, vec2 center, float n, float spiral_factor, float zoom_factor, vec2 pos){
+			vec2 uv = domain - center;
+			float d = length(uv);
+			return vec2( atan(uv.y, uv.x)*n*pi2_inv + d*spiral_factor, -log(d)*zoom_factor) + pos;
+		}
+
+		vec2 complex_div(vec2 numerator, vec2 denominator){
+			 return vec2( numerator.x*denominator.x + numerator.y*denominator.y,
+										numerator.y*denominator.x - numerator.x*denominator.y)/
+							vec2(denominator.x*denominator.x + denominator.y*denominator.y);
+		}
+
+		// HSL to RGB converter code from http://www.gamedev.net/topic/465948-hsl-shader-glsl-code/
+		float Hue_2_RGB(float v1, float v2, float vH )
 		{
-			 if ( L < 0.5 )
-			 {
-				 var_2 = L * ( 1.0 + S );
-			 }
+			float ret;
+			 if ( vH < 0.0 )
+				 vH += 1.0;
+			 if ( vH > 1.0 )
+				 vH -= 1.0;
+			 if ( ( 6.0 * vH ) < 1.0 )
+				 ret = ( v1 + ( v2 - v1 ) * 6.0 * vH );
+			 else if ( ( 2.0 * vH ) < 1.0 )
+				 ret = ( v2 );
+			 else if ( ( 3.0 * vH ) < 2.0 )
+				 ret = ( v1 + ( v2 - v1 ) * ( ( 2.0 / 3.0 ) - vH ) * 6.0 );
 			 else
-			 {
-				 var_2 = ( L + S ) - ( S * L );
-			 }
-
-			 var_1 = 2.0 * L - var_2;
-
-			 R = Hue_2_RGB( var_1, var_2, H + ( 1.0 / 3.0 ) );
-			 G = Hue_2_RGB( var_1, var_2, H );
-			 B = Hue_2_RGB( var_1, var_2, H - ( 1.0 / 3.0 ) );
+				 ret = v1;
+			 return ret;
 		}
-		return vec3(R,G,B);
-	}
 
-	vec2 gradient(sampler2D sampler, vec2 uv, vec2 d, vec4 selector){
-		vec4 dX = 0.5*texture2D(sampler, uv + vec2(1.,0.)*d) - 0.5*texture2D(sampler, uv - vec2(1.,0.)*d);
-		vec4 dY = 0.5*texture2D(sampler, uv + vec2(0.,1.)*d) - 0.5*texture2D(sampler, uv - vec2(0.,1.)*d);
-		return vec2( dot(dX, selector), dot(dY, selector) );
-	}
+		vec3 hsl2rgb(float H, float S, float L){
+			float var_2, var_1, R, G, B;	
+			if (S == 0.0)
+			{
+				 R = L;
+				 G = L;
+				 B = L;
+			}
+			else
+			{
+				 if ( L < 0.5 )
+				 {
+					 var_2 = L * ( 1.0 + S );
+				 }
+				 else
+				 {
+					 var_2 = ( L + S ) - ( S * L );
+				 }
 
-	vec2 rot90(vec2 vector){
-		return vector.yx*vec2(1,-1);
-	}
+				 var_1 = 2.0 * L - var_2;
 
-	float circle(vec2 uv, vec2 aspect, float scale){
-		return clamp( 1. - length((uv-0.5)*aspect*scale), 0., 1.);
-	}
+				 R = Hue_2_RGB( var_1, var_2, H + ( 1.0 / 3.0 ) );
+				 G = Hue_2_RGB( var_1, var_2, H );
+				 B = Hue_2_RGB( var_1, var_2, H - ( 1.0 / 3.0 ) );
+			}
+			return vec3(R,G,B);
+		}
 
-	float sigmoid(float x) {
-		return 2./(1. + exp2(-x)) - 1.;
-	}
+		vec2 gradient(sampler2D sampler, vec2 uv, vec2 d, vec4 selector){
+			vec4 dX = 0.5*texture2D(sampler, uv + vec2(1.,0.)*d) - 0.5*texture2D(sampler, uv - vec2(1.,0.)*d);
+			vec4 dY = 0.5*texture2D(sampler, uv + vec2(0.,1.)*d) - 0.5*texture2D(sampler, uv - vec2(0.,1.)*d);
+			return vec2( dot(dX, selector), dot(dY, selector) );
+		}
 
-	float smoothcircle(vec2 uv, vec2 aspect, float radius, float ramp){
-		return 0.5 - sigmoid( ( length( (uv - 0.5) * aspect) - radius) * ramp) * 0.5;
-	}
+		vec2 rot90(vec2 vector){
+			return vector.yx*vec2(1,-1);
+		}
+
+		float circle(vec2 uv, vec2 aspect, float scale){
+			return clamp( 1. - length((uv-0.5)*aspect*scale), 0., 1.);
+		}
+
+		float sigmoid(float x) {
+			return 2./(1. + exp2(-x)) - 1.;
+		}
+
+		float smoothcircle(vec2 uv, vec2 aspect, float radius, float ramp){
+			return 0.5 - sigmoid( ( length( (uv - 0.5) * aspect) - radius) * ramp) * 0.5;
+		}
 
 	</script>
 
 	<script id="shader-fs-copy" type="x-shader/x-fragment"> 
-	uniform sampler2D source;
-	void main(void) {
-		gl_FragColor = texture2D(source, uv);
-	}
+		uniform sampler2D source;
+		void main(void) {
+			gl_FragColor = texture2D(source, uv);
+		}
 	</script>
 
 	<script id="shader-fs-init" type="x-shader/x-fragment"> 
-	void main(void){
-		gl_FragColor = vec4(0.);
-	}
+		void main(void){
+			gl_FragColor = vec4(0.);
+		}
 	</script>
 
 	<script id="shader-fs-move-particles" type="x-shader/x-fragment"> 
-	uniform sampler2D sampler_prev;
-	uniform sampler2D sampler_prev_n;
-	uniform sampler2D sampler_blur;
-	uniform sampler2D sampler_blur2;
-	uniform sampler2D sampler_blur3;
-	uniform sampler2D sampler_blur4;
-	uniform sampler2D sampler_blur5;
-	uniform sampler2D sampler_blur6;
-	uniform sampler2D sampler_noise;
-	uniform sampler2D sampler_noise_n;
-	uniform sampler2D sampler_fluid;
-	uniform sampler2D sampler_particles;
+		uniform sampler2D sampler_prev;
+		uniform sampler2D sampler_prev_n;
+		uniform sampler2D sampler_blur;
+		uniform sampler2D sampler_blur2;
+		uniform sampler2D sampler_blur3;
+		uniform sampler2D sampler_blur4;
+		uniform sampler2D sampler_blur5;
+		uniform sampler2D sampler_blur6;
+		uniform sampler2D sampler_noise;
+		uniform sampler2D sampler_noise_n;
+		uniform sampler2D sampler_fluid;
+		uniform sampler2D sampler_particles;
 
-	uniform vec2 texSize;
-	uniform vec2 pixelSize;
-	uniform vec2 scale;
-	uniform vec4 rnd;
-	uniform float frame;
-	uniform vec2 mouse;
-	uniform vec2 mouseV;
+		vec4 applyMoverForce(vec4 p, vec2 f00, int moverState, vec4 mover, vec4 col){
+			if(col.a == 1. && (moverState == 4 || moverState == 3)){
+				vec2 pos = (p.xy - mover.xy);
+				float d = length(pos*aspect);
 
-	void main(void){
-		vec4 p = texture2D(sampler_particles, uv); // residual location and velocity of the particle in the previous frame
-		vec2 f = texture2D(sampler_fluid, p.xy).xz*pixelSize; // fluid simulation flow vector
-		vec4 noise = texture2D(sampler_noise, p.xy)*2. - vec4(1.);
-
-		// apply forces
-		p.zw += gradient(sampler_blur6, p.xy, pixelSize*64., vec4(-1.,1.75,0.,0.))*pixelSize; // gradients from red and green
-		p.zw = p.zw * max(0., 1.- (p.z*p.z + p.w*p.w)*32.); // (non-linear) friction
-
-		p.xy += p.zw; // verlet integration
-
-		vec2 oo = vec2(0);
-		oo += gradient(sampler_prev, p.xy, pixelSize*1., vec4(-32.,0,0.,0.))*pixelSize; // move away from red, accurate
-		oo += gradient(sampler_blur, p.xy, pixelSize*4., vec4(4.,0,0.,0.))*pixelSize; // move toward red, smooth
-		oo += rot90(gradient(sampler_blur2, p.xy, pixelSize*8., vec4(-8.,0,0.,0.)))*pixelSize; // move orthogonal to the gradient
-
-		p.xy += f+oo; // fluid + other offset
-
-		/*
-		float bounce = 0.999;
-
-		if(p.x < 0.){
-			p.x = 0.;
-			p.z = abs(p.z)*bounce;
-		}else if(p.x > 1.){
-			p.x = 1.;
-			p.z = -abs(p.z)*bounce;
+				float area = smoothcircle(p.xy-mover.xy+0.5, aspect, 0.66, 64.);
+				float dir = 0.002;
+				if( moverState == 3){
+					dir = -0.004;
+				}
+				p.zw += pos * area * dir;
+		
+				//p.xy += mover.zw * float(d < 0.04); // simple window cleaner
+			}
+			return p;
 		}
 
-		if(p.y < 0.){
-			p.y = 0.;
-			p.w = abs(p.w)*bounce;
-		}else if(p.y > 1.){
-			p.y = 1.;
-			p.w = -abs(p.w)*bounce;
+		vec4 applyMoverForces(vec4 p, vec2 foo){
+			p = applyMoverForce(p, foo, moverState0, mover0, col0); // first person, left hand
+			p = applyMoverForce(p, foo, moverState1, mover1, col0); // right hand
+			p = applyMoverForce(p, foo, moverState2, mover2, col1); // second person
+			p = applyMoverForce(p, foo, moverState3, mover3, col1);
+			p = applyMoverForce(p, foo, moverState4, mover4, col2); // third
+			p = applyMoverForce(p, foo, moverState5, mover5, col2);
+			p = applyMoverForce(p, foo, moverState6, mover6, col3);
+			p = applyMoverForce(p, foo, moverState7, mover7, col3);
+			p = applyMoverForce(p, foo, moverState8, mover8, col4);
+			p = applyMoverForce(p, foo, moverState9, mover9, col4);
+			p.xy += foo;
+			return p;
 		}
 
-		gl_FragColor = p; // write back
-	*/
-		gl_FragColor.xy = fract(p.xy); // wrap
+		void main(void){
+			vec4 p = texture2D(sampler_particles, uv); // residual location and velocity of the particle in the previous frame
+			vec2 f = texture2D(sampler_fluid, p.xy).xz*pixelSize; // fluid simulation flow vector
+			vec4 noise = texture2D(sampler_noise, p.xy)*2. - vec4(1.);
 
-		gl_FragColor.zw = p.zw; 
-	}
+			// apply forces
+			p.zw += gradient(sampler_blur6, p.xy, pixelSize*64., vec4(-1.,1.75,0.,0.))*pixelSize; // gradients from red and green
+
+			vec2 oo = vec2(0);
+			oo += gradient(sampler_prev, p.xy, pixelSize*1., vec4(-32.,0,0.,0.))*pixelSize; // move away from red, accurate
+			oo += gradient(sampler_blur, p.xy, pixelSize*4., vec4(4.,0,0.,0.))*pixelSize; // move toward red, smooth
+			oo += rot90(gradient(sampler_blur2, p.xy, pixelSize*8., vec4(-8.,0,0.,0.)))*pixelSize; // move orthogonal to the gradient
+
+			p = applyMoverForces(p, f+oo); // fluid + other offset
+			p.zw = p.zw * max(0., 1.- (p.z*p.z + p.w*p.w)*32.); // (non-linear) friction
+			p.xy += p.zw; // verlet integration
+
+			gl_FragColor.xy = fract(p.xy); // wrap
+
+			gl_FragColor.zw = p.zw; 
+		}
 	</script>
 
 	<script id="shader-fs-composite" type="x-shader/x-fragment"> 
-	uniform sampler2D sampler_prev;
-	uniform sampler2D sampler_prev_n;
-	uniform sampler2D sampler_blur;
-	uniform sampler2D sampler_blur2;
-	uniform sampler2D sampler_blur3;
-	uniform sampler2D sampler_blur4;
-	uniform sampler2D sampler_blur5;
-	uniform sampler2D sampler_blur6;
-	uniform sampler2D sampler_noise;
-	uniform sampler2D sampler_noise_n;
-	uniform sampler2D sampler_fluid;
-	uniform sampler2D sampler_fluid_p;
-	uniform sampler2D sampler_particles;
-	uniform sampler2D sampler_particle_projection;
-	uniform sampler2D sampler_canvas2d;
+		uniform sampler2D sampler_prev;
+		uniform sampler2D sampler_prev_n;
+		uniform sampler2D sampler_blur;
+		uniform sampler2D sampler_blur2;
+		uniform sampler2D sampler_blur3;
+		uniform sampler2D sampler_blur4;
+		uniform sampler2D sampler_blur5;
+		uniform sampler2D sampler_blur6;
+		uniform sampler2D sampler_noise;
+		uniform sampler2D sampler_noise_n;
+		uniform sampler2D sampler_fluid;
+		uniform sampler2D sampler_fluid_p;
+		uniform sampler2D sampler_particles;
+		uniform sampler2D sampler_particle_projection;
+		uniform sampler2D sampler_canvas2d;
 
-	uniform vec4 rnd;
-	uniform vec4 rainbow;
-	uniform vec2 texSize;
-	uniform vec2 pixelSize;
-	uniform vec2 aspect;
-	uniform vec2 mouse;
-	uniform vec2 mouseV;
-	uniform float fps;
-	uniform float time;
-	uniform float frame;
+		vec4 moverCol(int moverState){
+			vec4 red = vec4(1,0,0,0);
+			vec4 green = vec4(0,1,0,0);
+			vec4 blue = vec4(0,0,1,0);
 
-	float mouseFilter(vec2 uv){
-		return clamp( 1.-length((uv-mouse)*texSize)/16., 0. , 1.);
-	}
-	void main(void) {
-		vec2 uv_bg = uv	+(gradient(sampler_prev, uv, pixelSize*1.5, vec4(1,0,0,0))
-						+ gradient(sampler_blur, uv, pixelSize*3., vec4(-2,0,0,0)))*pixelSize*512.;
+			vec4 cyan = vec4(0,1,1,0);
+			vec4 yellow = vec4(1,1,0,0);
 
-		gl_FragColor = mix(vec4(0), vec4(0.8,0.7,1,0), texture2D(sampler_blur, uv_bg).g);
+			vec4 purple = vec4(0.5,0,.50,0);
 
-		vec2 uv_turing = uv + gradient(sampler_prev, uv, pixelSize*1., vec4(0.7,-1,0,0))*pixelSize*16.;
-		gl_FragColor = mix(gl_FragColor, vec4(7./256.), pow(texture2D(sampler_prev, uv_turing).r,0.5));
+			vec4 col = purple; // unknown
 
-		vec2 uv_particles = uv + gradient(sampler_blur, uv, pixelSize*2., vec4(1,-1,0,0))*pixelSize*4.*0.;
-		uv_particles += gradient(sampler_blur2, uv, pixelSize*4., vec4(0,-1,0,0))*pixelSize*128.;
+			if(moverState == 1){ // lasso
+				col = cyan;
+			}
+			if(moverState == 2){ // open
+				col = red;
+			}
+			if(moverState == 3){ // closed
+				col = green;
+			}
+			if(moverState == 4){ // pointy
+				col = yellow;
+			}
+			return col;
+		}
 
-		gl_FragColor = mix(gl_FragColor, vec4(7./8.), texture2D(sampler_particle_projection, uv_particles)*0.25);
+		void mixInMover(int moverState, vec4 mover, vec4 col){
+			if(col.a == 1.){
+				gl_FragColor = mix(gl_FragColor, moverCol(moverState), smoothcircle(uv-mover.xy+0.5, aspect, 0.025, 96.));
+			}
+		}
 
-	//	gl_FragColor = texture2D(sampler_prev, uv); // bypass
+		void mixInMovers(){
+			mixInMover(moverState0, mover0, col0); // first person, left hand
+			mixInMover(moverState1, mover1, col0); // right hand
+
+			mixInMover(moverState2, mover2, col1); // second person
+			mixInMover(moverState3, mover3, col1);
+
+			mixInMover(moverState4, mover4, col2); // third
+			mixInMover(moverState5, mover5, col2);
+			mixInMover(moverState6, mover6, col3);
+			mixInMover(moverState7, mover7, col3);
+			mixInMover(moverState8, mover8, col4);
+			mixInMover(moverState9, mover9, col4);
+		}
+
+		float mouseFilter(vec2 uv){
+			return clamp( 1.-length((uv-mouse)*texSize)/16., 0. , 1.);
+		}
+
+		void main(void) {
+			vec2 uv_bg = uv	+(gradient(sampler_prev, uv, pixelSize*1.5, vec4(1,0,0,0))
+							+ gradient(sampler_blur, uv, pixelSize*3., vec4(-2,0,0,0)))*pixelSize*512.;
+
+			gl_FragColor = mix(vec4(0), vec4(0.8,0.7,1,0), texture2D(sampler_blur, uv_bg).g);
+
+			vec2 uv_turing = uv + gradient(sampler_prev, uv, pixelSize*1., vec4(0.7,-1,0,0))*pixelSize*16.;
+			gl_FragColor = mix(gl_FragColor, vec4(7./256.), pow(texture2D(sampler_prev, uv_turing).r,0.5));
+
+			vec2 uv_particles = uv + gradient(sampler_blur, uv, pixelSize*2., vec4(1,-1,0,0))*pixelSize*4.*0.;
+			uv_particles += gradient(sampler_blur2, uv, pixelSize*4., vec4(0,-1,0,0))*pixelSize*128.;
+
+			gl_FragColor = mix(gl_FragColor, vec4(7./8.), texture2D(sampler_particle_projection, uv_particles)*0.25);
+
+		//	gl_FragColor = texture2D(sampler_prev, uv); // bypass
 	
-		gl_FragColor = mix(gl_FragColor, vec4(1), texture2D(sampler_canvas2d, uv));
-
-		gl_FragColor.a = 1.;
-	}
+			gl_FragColor = mix(gl_FragColor, vec4(1), texture2D(sampler_canvas2d, uv));
+			mixInMovers();
+			gl_FragColor.a = 1.;
+		}
 	</script>
+
 	<script id="shader-fs-advance" type="x-shader/x-fragment"> 
-	uniform sampler2D sampler_prev;
-	uniform sampler2D sampler_prev_n;
-	uniform sampler2D sampler_blur;
-	uniform sampler2D sampler_blur2;
-	uniform sampler2D sampler_blur3;
-	uniform sampler2D sampler_blur4;
-	uniform sampler2D sampler_blur5;
-	uniform sampler2D sampler_blur6;
-	uniform sampler2D sampler_noise;
-	uniform sampler2D sampler_noise_n;
-	uniform sampler2D sampler_fluid;
-	uniform sampler2D sampler_particles;
-	uniform sampler2D sampler_particle_projection;
+		uniform sampler2D sampler_prev;
+		uniform sampler2D sampler_prev_n;
+		uniform sampler2D sampler_blur;
+		uniform sampler2D sampler_blur2;
+		uniform sampler2D sampler_blur3;
+		uniform sampler2D sampler_blur4;
+		uniform sampler2D sampler_blur5;
+		uniform sampler2D sampler_blur6;
+		uniform sampler2D sampler_noise;
+		uniform sampler2D sampler_noise_n;
+		uniform sampler2D sampler_fluid;
+		uniform sampler2D sampler_particles;
+		uniform sampler2D sampler_particle_projection;
 
-	uniform vec4 rnd;
-	uniform vec4 rainbow;
-	uniform vec2 pixelSize;
-	uniform vec2 aspect;
-	uniform vec2 mouse;
-	uniform vec2 mouseV;
-	uniform float fps;
-	uniform float time;
-	uniform float frame;
+		void main(void) {
+			float noise = texture2D(sampler_noise, uv + rnd.zw).x*0.5-0.25;
+			vec2 f = texture2D(sampler_fluid, uv).xz*pixelSize;
 
-	void main(void) {
-		float noise = texture2D(sampler_noise, uv + rnd.zw).x*0.5-0.25;
-		vec2 f = texture2D(sampler_fluid, uv).xz*pixelSize;
+			gl_FragColor = vec4(0.);
 
-		gl_FragColor = vec4(0.);
+			//starting from a simple Turing pattern in red
 
-		//starting from a simple Turing pattern in red
+			float centerFilter = smoothcircle(uv, aspect, 0.25, 128.);
+			float zoom = 1.;// 0.999;
+			float w = 0.;
+			vec2 w2 = vec2(cos(w),sin(w));
+			vec2 c = vec2(0.5);
+			vec2 uvr = c + complex_mul((uv - c)*zoom, w2) + noise*pixelSize*0. - f;
+			uvr +=  gradient(sampler_blur5, uv, pixelSize*64., vec4(0.,6.2,0.,0.))*pixelSize;
+		//	uvr +=  rot90(gradient(sampler_blur5, uv, pixelSize*32., vec4(0.,4.,0.,0.)))*pixelSize;
+			uvr +=  gradient(sampler_blur2, uv, pixelSize*4., vec4(-2.,0.,0.,0.))*pixelSize;
+		//	uvr +=  rot90(gradient(sampler_blur, uv, pixelSize*4., vec4(1.,0.,0.,0.)))*pixelSize;
+			gl_FragColor.r = texture2D(sampler_prev, uvr).r;
+			gl_FragColor.r += (texture2D(sampler_blur2, uv).r - texture2D(sampler_blur4, uvr).r)*20./256. + 1./256. + noise*0./256.;
 
-		float centerFilter = smoothcircle(uv, aspect, 0.25, 128.);
-		float zoom = 1.;// 0.999;
-		float w = 0.;
-		vec2 w2 = vec2(cos(w),sin(w));
-		vec2 c = vec2(0.5);
-		vec2 uvr = c + complex_mul((uv - c)*zoom, w2) + noise*pixelSize*0. - f;
-		uvr +=  gradient(sampler_blur5, uv, pixelSize*64., vec4(0.,6.2,0.,0.))*pixelSize;
-	//	uvr +=  rot90(gradient(sampler_blur5, uv, pixelSize*32., vec4(0.,4.,0.,0.)))*pixelSize;
-		uvr +=  gradient(sampler_blur2, uv, pixelSize*4., vec4(-2.,0.,0.,0.))*pixelSize;
-	//	uvr +=  rot90(gradient(sampler_blur, uv, pixelSize*4., vec4(1.,0.,0.,0.)))*pixelSize;
-		gl_FragColor.r = texture2D(sampler_prev, uvr).r;
-		gl_FragColor.r += (texture2D(sampler_blur2, uv).r - texture2D(sampler_blur4, uvr).r)*20./256. + 1./256. + noise*0./256.;
+			// then there's the particle projection that's added to the green
 
-		// then there's the particle projection that's added to the green
-
-		gl_FragColor.g = texture2D(sampler_blur2, uv).g *240./256.;
-		gl_FragColor.g = mix(gl_FragColor.g, texture2D(sampler_particle_projection, uv).g, 16./256.);
+			gl_FragColor.g = texture2D(sampler_blur2, uv).g *240./256.;
+			gl_FragColor.g = mix(gl_FragColor.g, texture2D(sampler_particle_projection, uv).g, 16./256.);
 
 
-		gl_FragColor = clamp(gl_FragColor, 0., 1.);
-		gl_FragColor.a = 1.;
-	}
+			gl_FragColor = clamp(gl_FragColor, 0., 1.);
+			gl_FragColor.a = 1.;
+		}
 	</script>
 
 	<script id="shader-fs-blur-horizontal" type="x-shader/x-fragment">
-	// original shader from http://www.gamerendering.com/2008/10/11/gaussian-blur-filter-shader/
-	// horizontal blur fragment shader
-	uniform sampler2D src_tex;
-	uniform vec2 pixelSize;
+		// original shader from http://www.gamerendering.com/2008/10/11/gaussian-blur-filter-shader/
+		// horizontal blur fragment shader
+		uniform sampler2D src_tex;
 
-	void main(void) // fragment
-	{
-		float h = pixelSize.x;
-		vec4 sum = vec4(0.0);
-		sum += texture2D(src_tex, vec2(uv.x - 4.0*h, uv.y) ) * 0.05;
-		sum += texture2D(src_tex, vec2(uv.x - 3.0*h, uv.y) ) * 0.09;
-		sum += texture2D(src_tex, vec2(uv.x - 2.0*h, uv.y) ) * 0.12;
-		sum += texture2D(src_tex, vec2(uv.x - 1.0*h, uv.y) ) * 0.15;
-		sum += texture2D(src_tex, vec2(uv.x + 0.0*h, uv.y) ) * 0.16;
-		sum += texture2D(src_tex, vec2(uv.x + 1.0*h, uv.y) ) * 0.15;
-		sum += texture2D(src_tex, vec2(uv.x + 2.0*h, uv.y) ) * 0.12;
-		sum += texture2D(src_tex, vec2(uv.x + 3.0*h, uv.y) ) * 0.09;
-		sum += texture2D(src_tex, vec2(uv.x + 4.0*h, uv.y) ) * 0.05;
-		gl_FragColor.xyz = sum.xyz/0.98; // normalize
-		gl_FragColor.a = 1.;
-	} 
+		void main(void) // fragment
+		{
+			float h = pixelSize.x;
+			vec4 sum = vec4(0.0);
+			sum += texture2D(src_tex, vec2(uv.x - 4.0*h, uv.y) ) * 0.05;
+			sum += texture2D(src_tex, vec2(uv.x - 3.0*h, uv.y) ) * 0.09;
+			sum += texture2D(src_tex, vec2(uv.x - 2.0*h, uv.y) ) * 0.12;
+			sum += texture2D(src_tex, vec2(uv.x - 1.0*h, uv.y) ) * 0.15;
+			sum += texture2D(src_tex, vec2(uv.x + 0.0*h, uv.y) ) * 0.16;
+			sum += texture2D(src_tex, vec2(uv.x + 1.0*h, uv.y) ) * 0.15;
+			sum += texture2D(src_tex, vec2(uv.x + 2.0*h, uv.y) ) * 0.12;
+			sum += texture2D(src_tex, vec2(uv.x + 3.0*h, uv.y) ) * 0.09;
+			sum += texture2D(src_tex, vec2(uv.x + 4.0*h, uv.y) ) * 0.05;
+			gl_FragColor.xyz = sum.xyz/0.98; // normalize
+			gl_FragColor.a = 1.;
+		} 
 	</script>
 
 	<script id="shader-fs-blur-vertical" type="x-shader/x-fragment">
 	uniform sampler2D src_tex;
-	uniform vec2 pixelSize;
 
 	void main(void) // fragment
 	{
@@ -728,142 +824,133 @@
 		sum += texture2D(src_tex, vec2(uv.x, + 2.0*v + uv.y) ) * 0.12;
 		sum += texture2D(src_tex, vec2(uv.x, + 3.0*v + uv.y) ) * 0.09;
 		sum += texture2D(src_tex, vec2(uv.x, + 4.0*v + uv.y) ) * 0.05;
-			gl_FragColor.xyz = sum.xyz/0.98;
+		gl_FragColor.xyz = sum.xyz/0.98;
 		gl_FragColor.a = 1.;
 	}
 	</script>
 
 	<script id="shader-fs-add-mouse-motion" type="x-shader/x-fragment"> 
-	uniform sampler2D sampler_fluid;
+		uniform sampler2D sampler_fluid;
 
-	uniform vec2 aspect;
-	uniform vec2 mouse; // mouse coordinate
-	uniform vec2 mouseV; // mouse velocity
-	uniform vec2 pixelSize;
-	uniform vec2 texSize;
+		float mouseFilter(vec2 uv){
+			return clamp( 1.-length((uv-mouse)*texSize)/2., 0. , 1.);
+		}
 
-	float mouseFilter(vec2 uv){
-		return clamp( 1.-length((uv-mouse)*texSize)/2., 0. , 1.);
-	}
+		void main(void){
+			vec2 v = texture2D(sampler_fluid, uv).xz;
 
-	void main(void){
-		vec2 v = texture2D(sampler_fluid, uv).xz;
+			if(length(mouseV) > 0.)
+				v = mix(v, mouseV*2., mouseFilter(uv)*0.85);
 
-		if(length(mouseV) > 0.)
-			v = mix(v, mouseV*2., mouseFilter(uv)*0.85);
-
-		gl_FragColor.xz = v;
-	}
+			gl_FragColor.xz = v;
+		}
 	</script>
 
 	<script id="shader-fs-advect" type="x-shader/x-fragment"> 
-	uniform vec2 texSize;
-	uniform vec2 pixelSize;
+		uniform sampler2D sampler_fluid;
 
-	uniform sampler2D sampler_fluid;
+		const float dt = .0005;
 
-	const float dt = .0005;
+		void main(void){
+			vec2 v = texture2D(sampler_fluid, uv).xz;
 
-	void main(void){
-		vec2 v = texture2D(sampler_fluid, uv).xz;
+			vec2 D = -texSize*vec2(v.x, v.y)*dt;
 
-		vec2 D = -texSize*vec2(v.x, v.y)*dt;
+			 vec2 Df = floor(D),   Dd = D - Df;
+			 vec2 uv = uv + Df*pixelSize;
 
-		 vec2 Df = floor(D),   Dd = D - Df;
-		 vec2 uv = uv + Df*pixelSize;
+			vec2 uv0, uv1, uv2, uv3;
 
-		vec2 uv0, uv1, uv2, uv3;
+			uv0 = uv + pixelSize*vec2(0.,0.);
+			uv1 = uv + pixelSize*vec2(1.,0.);
+			uv2 = uv + pixelSize*vec2(0.,1.);
+			uv3 = uv + pixelSize*vec2(1.,1.);
 
-		uv0 = uv + pixelSize*vec2(0.,0.);
-		uv1 = uv + pixelSize*vec2(1.,0.);
-		uv2 = uv + pixelSize*vec2(0.,1.);
-		uv3 = uv + pixelSize*vec2(1.,1.);
+			vec2 v0 = texture2D(sampler_fluid, uv0).xz;
+			vec2 v1 = texture2D(sampler_fluid, uv1).xz;
+			vec2 v2 = texture2D(sampler_fluid, uv2).xz;
+			vec2 v3 = texture2D(sampler_fluid, uv3).xz;
 
-		vec2 v0 = texture2D(sampler_fluid, uv0).xz;
-		vec2 v1 = texture2D(sampler_fluid, uv1).xz;
-		vec2 v2 = texture2D(sampler_fluid, uv2).xz;
-		vec2 v3 = texture2D(sampler_fluid, uv3).xz;
+			v = mix( mix( v0, v1, Dd.x), mix( v2, v3, Dd.x), Dd.y);
 
-		v = mix( mix( v0, v1, Dd.x), mix( v2, v3, Dd.x), Dd.y);
-
-		gl_FragColor.xz = v*(1.-border(uv, 1., texSize));
-	}
-
+			gl_FragColor.xz = v*(1.-border(uv, 1., texSize));
+		}
 	</script>
 
 	<script id="shader-fs-p" type="x-shader/x-fragment"> 
-	uniform vec2 pixelSize;
-	uniform vec2 texSize;
-	uniform sampler2D sampler_v;
-	uniform sampler2D sampler_p;
-	const float h = 1./1024.;
+		uniform sampler2D sampler_v;
+		uniform sampler2D sampler_p;
+		const float h = 1./1024.;
 
-	void main(void){
+		void main(void){
 
-		vec2 v = texture2D(sampler_v, uv).xz;
-		float v_x = texture2D(sampler_v, uv - vec2(1.,0.)*pixelSize).r;
-		float v_y = texture2D(sampler_v, uv - vec2(0.,1.)*pixelSize).b;
+			vec2 v = texture2D(sampler_v, uv).xz;
+			float v_x = texture2D(sampler_v, uv - vec2(1.,0.)*pixelSize).r;
+			float v_y = texture2D(sampler_v, uv - vec2(0.,1.)*pixelSize).b;
 
-		float n = texture2D(sampler_p, uv- pixelSize*vec2(0.,1.)).r;
-		float w = texture2D(sampler_p, uv + pixelSize*vec2(1.,0.)).r;
-		float s = texture2D(sampler_p, uv + pixelSize*vec2(0.,1.)).r;
-		float e = texture2D(sampler_p, uv - pixelSize*vec2(1.,0.)).r;
+			float n = texture2D(sampler_p, uv- pixelSize*vec2(0.,1.)).r;
+			float w = texture2D(sampler_p, uv + pixelSize*vec2(1.,0.)).r;
+			float s = texture2D(sampler_p, uv + pixelSize*vec2(0.,1.)).r;
+			float e = texture2D(sampler_p, uv - pixelSize*vec2(1.,0.)).r;
 
-		float p = ( n + w + s + e - (v.x - v_x + v.y - v_y)*h ) * .25;
+			float p = ( n + w + s + e - (v.x - v_x + v.y - v_y)*h ) * .25;
 
-		gl_FragColor.r = p;
-		gl_FragColor.ba = vec2(0.); // unused
-	}
+			gl_FragColor.r = p;
+			gl_FragColor.ba = vec2(0.); // unused
+		}
 	</script>
 
 	<script id="shader-fs-div" type="x-shader/x-fragment"> 
-	uniform vec2 texSize;
-	uniform vec2 pixelSize;
-	uniform sampler2D sampler_v;
-	uniform sampler2D sampler_p;
+		uniform sampler2D sampler_v;
+		uniform sampler2D sampler_p;
 
-	void main(void){
-		float p = texture2D(sampler_p, uv).r;
-		vec2 v = texture2D(sampler_v, uv).xz;
-		float p_x = texture2D(sampler_p, uv + vec2(1.,0.)*pixelSize).r;
-		float p_y = texture2D(sampler_p, uv + vec2(0.,1.)*pixelSize).r;
+		void main(void){
+			float p = texture2D(sampler_p, uv).r;
+			vec2 v = texture2D(sampler_v, uv).xz;
+			float p_x = texture2D(sampler_p, uv + vec2(1.,0.)*pixelSize).r;
+			float p_y = texture2D(sampler_p, uv + vec2(0.,1.)*pixelSize).r;
 
-		v -= (vec2(p_x, p_y)-p)*512.;
+			v -= (vec2(p_x, p_y)-p)*512.;
 
-		gl_FragColor.xz = v;
-	}
+			gl_FragColor.xz = v;
+		}
 	</script>
 
 	<script type="x-shader/x-vertex" id="shader-particle-renderer-vs"> 
-	attribute vec2 uv; // particle position lookup vector
-	uniform sampler2D sampler_prev;
-	uniform sampler2D sampler_blur;
-	uniform sampler2D sampler_particles; // particle positions in a float texture
-	uniform vec2 mouse;
-	uniform vec2 pixelSize;
+		attribute vec2 uv; // particle position lookup vector
+		uniform sampler2D sampler_prev;
+		uniform sampler2D sampler_blur;
+		uniform sampler2D sampler_particles; // particle positions in a float texture
+		uniform vec2 mouse;
+		uniform vec2 pixelSize;
 			
-	vec2 gradient(sampler2D sampler, vec2 uv, vec2 d, vec4 selector){
-		vec4 dX = 0.5*texture2D(sampler, uv + vec2(1.,0.)*d) - 0.5*texture2D(sampler, uv - vec2(1.,0.)*d);
-		vec4 dY = 0.5*texture2D(sampler, uv + vec2(0.,1.)*d) - 0.5*texture2D(sampler, uv - vec2(0.,1.)*d);
-		return vec2( dot(dX, selector), dot(dY, selector) );
-	}
+		vec2 gradient(sampler2D sampler, vec2 uv, vec2 d, vec4 selector){
+			vec4 dX = 0.5*texture2D(sampler, uv + vec2(1.,0.)*d) - 0.5*texture2D(sampler, uv - vec2(1.,0.)*d);
+			vec4 dY = 0.5*texture2D(sampler, uv + vec2(0.,1.)*d) - 0.5*texture2D(sampler, uv - vec2(0.,1.)*d);
+			return vec2( dot(dX, selector), dot(dY, selector) );
+		}
 
-	void main() {
-		gl_Position = (texture2D(sampler_particles, uv) - 0.5)*2.; // pass em flat
-		gl_Position.xy += gradient(sampler_blur, gl_Position.xy*0.5+0.5, pixelSize*3., vec4(1,-0.,0,0))*pixelSize*32.;
+		void main() {
+			gl_Position = (texture2D(sampler_particles, uv) - 0.5)*2.; // pass em flat
+			gl_Position.xy += gradient(sampler_blur, gl_Position.xy*0.5+0.5, pixelSize*3., vec4(1,-0.,0,0))*pixelSize*32.;
 
-		gl_Position.zw = vec2(0,1);
-		gl_PointSize = 1.;	
-	}
+			gl_Position.zw = vec2(0,1);
+			gl_PointSize = 1.;	
+		}
 	</script>
+
 	<script type="x-shader/x-fragment" id="shader-particle-renderer-fs"> 
-	void main() {
-		gl_FragColor = vec4(1.0, 0.5, 0.166, 0.33);
-	}
+		void main() {
+			gl_FragColor = vec4(1.0, 0.5, 0.166, 0.33);
+		}
 	</script>
 
 	<script type="text/javascript">
-		function getShader(gl, id) {
+		function getShader(gl, id, addInc) {
+			if (addInc == undefined) {
+				addInc = true;
+			}
+
 			var shaderScript = document.getElementById(id);
 			var str = "";
 			var k = shaderScript.firstChild;
@@ -884,7 +971,9 @@
 
 			var shader;
 			if (shaderScript.type == "x-shader/x-fragment") {
-				str = incStr + str;
+				if (addInc) {
+					str = incStr + str;
+				}
 				shader = gl.createShader(gl.FRAGMENT_SHADER);
 			} else if (shaderScript.type == "x-shader/x-vertex")
 				shader = gl.createShader(gl.VERTEX_SHADER);
@@ -919,7 +1008,7 @@
 		var prog_fluid_div;
 		var prog_move_particles;
 		var prog_render_particles;
-		
+
 		var FBO_main;
 		var FBO_main2;
 		var FBO_noise;
@@ -1015,6 +1104,11 @@
 		// geometry
 		var particleBuffer, squareBuffer, hLineBuffer, vLineBuffer;
 
+		function updateApectRatio() {
+			aspectx = Math.max(1, viewX / viewY);
+			aspecty = Math.max(1, viewY / viewX);
+		}
+
 		function load() {
 			clearInterval(fpsDisplayUpdateTimer);
 			canvas2d = document.createElement("canvas");
@@ -1056,6 +1150,15 @@
 				mouseX = evt.pageX / viewX;
 				mouseY = 1 - evt.pageY / viewY;
 			};
+
+			document.addEventListener("orientationchange", window.onresize = function () {
+				viewX = window.innerWidth;
+				viewY = window.innerHeight;
+				c.width = viewX;
+				c.height = viewY;
+				updateApectRatio();
+			});
+
 
 			if (startFullpage) {
 				viewX = window.innerWidth;
@@ -1215,7 +1318,7 @@
 			texture_blur6 = createAndBindTexture(new Float32Array(pixels6), 32, FBO_blur6, gl.LINEAR);
 
 			FBO_canvas2d = gl.createFramebuffer();
-			texture_canvas2d = createAndBindTexture(new Float32Array(pixels), 1, FBO_canvas2d, gl.NEAREST);
+			texture_canvas2d = createAndBindTexture(new Float32Array(pixels), 1, FBO_canvas2d, gl.LINEAR);
 
 			FBO_noise = gl.createFramebuffer();
 			glPixels = new Float32Array(noisePixels);
@@ -1269,8 +1372,6 @@
 			gl.activeTexture(gl.TEXTURE14);
 			gl.bindTexture(gl.TEXTURE_2D, texture_canvas2d);
 
-			calculateBlurTexture();
-
 			fluidInit(FBO_fluid_v);
 			fluidInit(FBO_fluid_p);
 			fluidInit(FBO_fluid_store);
@@ -1315,7 +1416,7 @@
 		function createAndLinkParticleRenderer(aParticleLoc) {
 			var program = gl.createProgram();
 			gl.attachShader(program, getShader(gl, "shader-particle-renderer-vs"));
-			gl.attachShader(program, getShader(gl, "shader-particle-renderer-fs"));
+			gl.attachShader(program, getShader(gl, "shader-particle-renderer-fs", false));
 			gl.bindAttribLocation(program, aParticleLoc, "uv"); // can't use getAttribLocation later so we must bind before linking
 			gl.linkProgram(program);
 			return program;
@@ -1391,6 +1492,79 @@
 			gl.uniform1i(gl.getUniformLocation(program, "sampler_particles"), 12);
 			gl.uniform1i(gl.getUniformLocation(program, "sampler_particle_projection"), 13);
 			gl.uniform1i(gl.getUniformLocation(program, "sampler_canvas2d"), 14);
+
+			setMoverUniforms(program);
+		}
+
+		var colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1]]; // red green blue yellow magenta cyan
+
+		function setMoverUniforms(program) {
+			// push it
+			var moverIndex = 0;
+			var bodyIndex = 0;
+			// project it
+			var p3d = {};
+			var p2d = {};
+			activeTrackingObjects.forEach(function (trackingObject) {
+				var stickman = trackingObject.stickman;
+				var body = trackingObject.body;
+				var x = 0.5 + (stickman.joints['Head'].x - 0.5) * 0.5;
+				var y = 0.5 + (stickman.joints['Head'].y - 0.5) * 0.5;
+				gl.uniform2f(gl.getUniformLocation(program, "head" + bodyIndex), x, y);
+				var col = colors[bodyIndex];
+				gl.uniform4f(gl.getUniformLocation(program, "col" + bodyIndex), col[0], col[1], col[2], 1);
+				bodyIndex++;
+				// left hand
+				project(body.handLeft, p2d); // current projection
+				var x = p2d.x / sizeX;
+				var y = 1 - p2d.y / sizeY;
+				project(body.handLeft.old, p2d); // previous projection
+				var old = {};
+				old.x = p2d.x / sizeX;
+				old.y = 1 - p2d.y / sizeY;
+				var dx = (x - old.x); // difference = velocity
+				var dy = (y - old.y);
+				if (Math.abs(dx) > 0.2) {
+					dx = 0.2 * dx / Math.abs(dx);
+				}
+				if (Math.abs(dy) > 0.2) {
+					dy = 0.2 * dy / Math.abs(dy);
+				}
+				var state = body.handLeft.state;
+				gl.uniform4f(gl.getUniformLocation(program, "mover" + moverIndex), x, y, dx, dy);
+				gl.uniform1i(gl.getUniformLocation(program, "moverState" + moverIndex), state);
+				moverIndex++;
+				// right hand
+				project(body.handRight, p2d);
+				x = p2d.x / sizeX;
+				y = 1 - p2d.y / sizeY;
+				project(body.handRight.old, p2d);
+				old.x = p2d.x / sizeX;
+				old.y = 1 - p2d.y / sizeY;
+				dx = (x - old.x);
+				dy = (y - old.y);
+				if (Math.abs(dx) > 0.2) {
+					dx = 0.2 * dx / Math.abs(dx);
+				}
+				if (Math.abs(dy) > 0.2) {
+					dy = 0.2 * dy / Math.abs(dy);
+				}
+				state = body.handRight.state;
+				gl.uniform4f(gl.getUniformLocation(program, "mover" + moverIndex), x, y, dx, dy);
+				gl.uniform1i(gl.getUniformLocation(program, "moverState" + moverIndex), state);
+				moverIndex++;
+			});
+			// init untracked players
+			for (var index = moverIndex; index < 12; index++) {
+				gl.uniform4f(gl.getUniformLocation(program, "col" + bodyIndex), 0, 0, 0, 0);
+				bodyIndex++;
+				gl.uniform4f(gl.getUniformLocation(program, "mover" + moverIndex), 0, 0, 0, 0);
+				gl.uniform1i(gl.getUniformLocation(program, "moverState" + moverIndex), 0);
+				moverIndex++;
+				gl.uniform4f(gl.getUniformLocation(program, "mover" + moverIndex), 0, 0, 0, 0);
+				gl.uniform1i(gl.getUniformLocation(program, "moverState" + moverIndex), 0);
+				moverIndex++
+			}
 		}
 
 		function useGeometry(geometry) {
@@ -1491,28 +1665,8 @@
 		function stepParticles() {
 			gl.viewport(0, 0, particlesWidth, particlesHeight);
 			gl.useProgram(prog_move_particles);
-			gl.uniform4f(gl.getUniformLocation(prog_move_particles, "rnd"), Math.random(), Math.random(), Math.random(), Math.random());
-			gl.uniform1f(gl.getUniformLocation(prog_move_particles, "frame"), framecount);
-			gl.uniform2f(gl.getUniformLocation(prog_move_particles, "texSize"), sizeX, sizeY);
-			gl.uniform2f(gl.getUniformLocation(prog_move_particles, "mouse"), mouseX, mouseY);
-			gl.uniform2f(gl.getUniformLocation(prog_move_particles, "mouseV"), mouseDx, mouseDy);
-			gl.uniform2f(gl.getUniformLocation(prog_move_particles, "pixelSize"), 1. / sizeX, 1. / sizeY);
-			gl.uniform2f(gl.getUniformLocation(prog_move_particles, "scale"), 2. / simScale / particlesWidth, 2. / simScale / particlesHeight);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_prev"), 0);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_prev_n"), 1);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_blur"), 2);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_blur2"), 3);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_blur3"), 4);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_blur4"), 5);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_blur5"), 6);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_blur6"), 7);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_noise"), 8);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_noise_n"), 9);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_fluid"), 10);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_fluid_p"), 11);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_particles"), 12);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_particle_projection"), 13);
-			gl.uniform1i(gl.getUniformLocation(prog_move_particles, "sampler_canvas2d"), 14);
+			setUniforms(prog_move_particles);
+
 			if (mainBufferToggle > 0) {
 				gl.activeTexture(gl.TEXTURE0);
 				gl.bindTexture(gl.TEXTURE_2D, texture_fluid_v);
