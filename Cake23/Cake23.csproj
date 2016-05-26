@@ -238,6 +238,7 @@
     </None>
     <AppDesigner Include="Properties\" />
     <None Include="WebTemplates\burningman.cshtml" />
+    <None Include="WebTemplates\firewater-2d-stickman.cshtml" />
     <None Include="WebTemplates\firewater-headwarp.cshtml" />
     <None Include="WebTemplates\drag-and-drop.cshtml" />
     <None Include="WebTemplates\particleball.cshtml" />
