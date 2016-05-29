@@ -1622,7 +1622,7 @@
 					dy = 0.2 * dy / Math.abs(dy);
 				}
 				var state = body.handLeft.state;
-				gl.uniform4f(gl.getUniformLocation(program, "mover" + moverIndex), x, y, dx*sizeX, dy*sizeY);
+				gl.uniform4f(gl.getUniformLocation(program, "mover" + moverIndex), x, y, dx, dy);
 				gl.uniform1i(gl.getUniformLocation(program, "moverState" + moverIndex), state);
 				moverIndex++;
 				// right hand
@@ -1641,7 +1641,7 @@
 					dy = 0.2 * dy / Math.abs(dy);
 				}
 				state = body.handRight.state;
-				gl.uniform4f(gl.getUniformLocation(program, "mover" + moverIndex), x, y, dx*sizeX, dy*sizeY);
+				gl.uniform4f(gl.getUniformLocation(program, "mover" + moverIndex), x, y, dx, dy);
 				gl.uniform1i(gl.getUniformLocation(program, "moverState" + moverIndex), state);
 				moverIndex++;
 			});
@@ -1784,9 +1784,7 @@
 			gl.useProgram(prog_fluid_add_mouse_motion);
 			gl.activeTexture(gl.TEXTURE0);
 			gl.bindTexture(gl.TEXTURE_2D, texture_fluid_v);
-			gl.uniform2f(gl.getUniformLocation(prog_fluid_add_mouse_motion, "aspect"), Math.max(1, viewX / viewY), Math.max(1, viewY / viewX));
-			gl.uniform2f(gl.getUniformLocation(prog_fluid_add_mouse_motion, "mouse"), mouseX, mouseY);
-			gl.uniform2f(gl.getUniformLocation(prog_fluid_add_mouse_motion, "mouseV"), mouseDx, mouseDy);
+			setMoverUniforms(prog_fluid_add_mouse_motion);
 			gl.uniform2f(gl.getUniformLocation(prog_fluid_add_mouse_motion, "pixelSize"), 1. / (sizeX / simScale), 1. / (sizeY / simScale));
 			gl.uniform2f(gl.getUniformLocation(prog_fluid_add_mouse_motion, "texSize"), (sizeX / simScale), (sizeY / simScale));
 			renderAsTriangleStrip(FBO_fluid_backbuffer);
