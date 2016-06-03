@@ -1,12 +1,12 @@
 ﻿<html>
 <head>
 	<title>Turing pattern + particle projection feedback + blur gradient composite | WebGL GPGPU</title>
-	<script src="http://Katze:9000/Scripts/jquery-1.6.4.min.js"></script>
-	<script src="http://Katze:9000/Scripts/jquery.signalR-2.2.0.min.js"></script>
-	<script src="http://Katze:9000/signalr/hubs"></script>
+	<script src="@(Model.Host.URL)/Scripts/jquery-1.6.4.min.js"></script>
+	<script src="@(Model.Host.URL)/Scripts/jquery.signalR-2.2.0.min.js"></script>
+	<script src="@(Model.Host.URL)/signalr/hubs"></script>
 	<script type="text/javascript">
 		$(function () {
-			$.connection.hub.url = "http://Katze:9000/signalr"; var kinect = $.connection.kinect2Hub;
+			$.connection.hub.url = "@(Model.Host.URL)/signalr"; var kinect = $.connection.kinect2Hub;
 
 			kinect.client.onBody = function (bodyJson, projectionMappedPointsJson) {
 				body = JSON.parse(bodyJson);
