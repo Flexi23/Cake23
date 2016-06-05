@@ -238,6 +238,7 @@
     </None>
     <AppDesigner Include="Properties\" />
     <None Include="WebTemplates\burningman.cshtml" />
+    <None Include="WebTemplates\poi-toy.cshtml" />
     <None Include="WebTemplates\reaction-diffusion-spot-worms.cshtml" />
     <None Include="WebTemplates\expansive-turing-gradient-particles.cshtml" />
     <None Include="WebTemplates\lavalamp.cshtml" />
