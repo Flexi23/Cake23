@@ -238,6 +238,8 @@
     </None>
     <AppDesigner Include="Properties\" />
     <None Include="WebTemplates\burningman.cshtml" />
+    <None Include="WebTemplates\poi-toy-onion-skinning-midichlorian.cshtml" />
+    <None Include="WebTemplates\poi-toy-midichlorian.cshtml" />
     <None Include="WebTemplates\poi-toy-rock-paper-scissor.cshtml" />
     <None Include="WebTemplates\poi-toy-painterly.cshtml" />
     <None Include="WebTemplates\poi-toy.cshtml" />
