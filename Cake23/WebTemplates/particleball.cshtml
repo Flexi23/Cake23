@@ -12,11 +12,12 @@
 				body = JSON.parse(bodyJson);
 				// bodysampler = JSON.parse(projectionMappedPointsJson); // this would be the inbuilt mapping of the 3d coordinates to the 1080p video camera
 				body.head = {
-					x: (body.Joints["Head"].Position.X + body.Joints["Neck"].Position.X * 2) / 3,
-					y: (body.Joints["Head"].Position.Y + body.Joints["Neck"].Position.Y * 2) / 3,
-					z: (body.Joints["Head"].Position.Z + body.Joints["Neck"].Position.Z * 2) / 3
+					x: body.Joints["Head"].Position.X,
+					y: body.Joints["Head"].Position.Y,
+					z: body.Joints["Head"].Position.Z,
+					old: { "x": -1, "y": -1, "z": -1 }
 				};
-				body.handRight = { "old": { "x": -1, "y": -1, "z": -1 }, "grab": false, "point": false, "object": null };
+				body.handRight = { old: { "x": -1, "y": -1, "z": -1 }, grab: false, point: false, object: null };
 				switch (body.handRight.state = body.HandRightState) {
 					case 3:
 						body.handRight.grab = true;
@@ -36,7 +37,7 @@
 					body.handRight.y = body.Joints["HandTipRight"].Position.Y;
 					body.handRight.z = body.Joints["HandTipRight"].Position.Z;
 				}
-				body.handLeft = { "old": { "x": -1, "y": -1, "z": -1 }, "grab": false, "point": false, "object": null };
+				body.handLeft = { old: { "x": -1, "y": -1, "z": -1 }, grab: false, point: false, object: null };
 				switch (body.handLeft.state = body.HandLeftState) {
 					case 3:
 						body.handLeft.grab = true;
@@ -61,6 +62,9 @@
 					trackingObject.body = body;
 				} else {
 					var oldBody = trackingObject.body;
+					body.head.old.x = oldBody.head.x; // collapse?
+					body.head.old.y = oldBody.head.y;
+					body.head.old.z = oldBody.head.z;
 					body.handRight.old.x = oldBody.handRight.x;
 					body.handRight.old.y = oldBody.handRight.y;
 					body.handRight.old.z = oldBody.handRight.z;
@@ -112,9 +116,16 @@
 		}
 
 		// Kinect body frame arrived
+		// TODO: this function should take into account that calls come from varying sites
 		var activeTrackingObjects = [];
-		function onBodies(trackingObjects, trackedBodyIds, frame) {
+		function onBodies(trackingObjects, trackedBodyIds, frame, sensorID) {
 			bodyFrameIndex = frame;
+			var oldActiveTrackingObjects = activeTrackingObjects;
+			oldActiveTrackingObjects.forEach(function (trackingObject) {
+				if (trackedBodyIds.indexOf(trackingObject.id) == -1) {
+					//trackingObject.stickman.pop();
+				}
+			});
 			activeTrackingObjects = [];
 			trackedBodyIds.forEach(function (id) {
 				var trackingObject = getTrackingObject(id);
@@ -123,6 +134,14 @@
 		}
 
 		var midi = [];
+
+		// presets copied from the Chrome console after doodling with the knobs and sliders of my Korg nanoKontrol2
+
+		// light theme
+		midi = [0.8582677165354331, 0.8031496062992126, 0.889763779527559, 0, 0.6614173228346457, 0.5196850393700787, 0.6771653543307087, 0, null, null, null, null, null, null, null, null, 0.29133858267716534, 0.25196850393700787, 0.6299212598425197, 0.9212598425196851, 0.031496062992125984, 0.25984251968503935, 0.2125984251968504, 1];
+		// dark theme
+		//midi = [0.015748031496062992, 0, 0.09448818897637795, 0, 0.3858267716535433, 0.2047244094488189, 0.047244094488188976, 0, null, null, null, null, null, null, null, null, 0.6614173228346457, 0.7795275590551181, 0.8267716535433071, 1, 0.6456692913385826, 0.7165354330708661, 1, 1];
+
 		function onMidi(channel, data1, data2) {
 			//for now, just ignore the channel information
 			midi[data1] = data2 / 127.;
@@ -152,7 +171,7 @@
 				if (head) {
 					var p2d = {};
 					var p3d = {};
-					var scale = 1.3;
+					var scale = 1.25;
 					for (var i = 0; i < 1347; i++) {
 
 						p3d.x = head.x + (vertices[i * 3 + 0] - head.x) * scale;
@@ -172,7 +191,6 @@
 					}
 				}
 			}
-			//console.log("face mesh deserialize and update time: " + dur);
 		}
 
 		function getMidi(id) {
@@ -190,20 +208,20 @@
 			"SpineShoulder", "HandTipLeft", "ThumbLeft", "HandTipRight", "ThumbRight"];
 
 		var members = [
-//		["SpineBase", "SpineMid"],
-//		["SpineMid", "SpineShoulder"],
+	//		["SpineBase", "SpineMid"],
+	//		["SpineMid", "SpineShoulder"],
 			["SpineShoulder", "Neck"],
-			["Neck", "Head"],
+	//		["Neck", "Head"],
 			["SpineShoulder", "ShoulderLeft"],
 			["ShoulderLeft", "ElbowLeft"],
 			["ElbowLeft", "WristLeft"],
 			["WristLeft", "HandLeft"],
 			["HandLeft", "HandTipLeft"],
 			["HandLeft", "ThumbLeft"],
-//		["SpineBase", "HipLeft"],
+	//		["SpineBase", "HipLeft"],
 			["SpineBase", "KneeLeft"],
 			["SpineBase", "KneeRight"],
-//		["HipLeft", "ShoulderLeft"],
+	//		["HipLeft", "ShoulderLeft"],
 			["HipLeft", "KneeLeft"],
 			["KneeLeft", "AnkleLeft"],
 			["AnkleLeft", "FootLeft"],
@@ -213,8 +231,8 @@
 			["WristRight", "HandRight"],
 			["HandRight", "HandTipRight"],
 			["HandRight", "ThumbRight"],
-//		["SpineBase", "HipRight"],
-//		["HipRight", "ShoulderRight"],
+	//		["SpineBase", "HipRight"],
+	//		["HipRight", "ShoulderRight"],
 			["HipRight", "KneeRight"],
 			["KneeRight", "AnkleRight"],
 			["AnkleRight", "FootRight"],
@@ -224,14 +242,14 @@
 			["SpineMid", "HipLeft"]
 		];
 
-		// perspective projection (virtual camera 
+		// perspective projection (virtual camera) 
 		function project(p3d, p2d) {
 			p2d.x = p3d.x;
 			p2d.y = p3d.y;
 			var w = Math.atan2(-p3d.x, -p3d.y);
 			var l = Math.sqrt(p3d.x * p3d.x + p3d.y * p3d.y);
-			var d = 3.;
-			var zoom = 3;
+			var d = 0.5;
+			var zoom = 1.;
 			var p = Math.tan(Math.PI / 2 + Math.atan2(d + p3d.z, l));
 			d = Math.sqrt(p3d.x * p3d.x + p3d.y * p3d.y + (p3d.z + d) * (p3d.z + d));
 			p2d.x = zoom * Math.sin(w) * p / aspectx + 0.5;
@@ -277,12 +295,13 @@
 			});
 			members.forEach(function (member) {
 				self.bones[member] = new Bone(self.joints[member[0]], self.joints[member[1]]);
-			});
+			});			
 		};
 
 		function updateStickMen() {
 			activeTrackingObjects.forEach(function (trackingObject) {
 
+				var body = trackingObject.body;
 				var stickman = trackingObject.stickman;
 				if (stickman == null) {
 					stickman = new Stickman();
@@ -297,6 +316,22 @@
 						state: body.Joints[id].TrackingState
 					});
 				});
+								
+			});
+		}
+
+
+		function drawPoiToys(context) {
+			activeTrackingObjects.forEach(function (trackingObject) {
+
+				var stickman = trackingObject.stickman;
+				if (stickman == null) {
+					stickman = new Stickman();
+					trackingObject.stickman = stickman;
+				}
+
+				stickman.leftHandPoiToy.drawLightStreaks(context);
+				stickman.rightHandPoiToy.drawLightStreaks(context);
 			});
 		}
 
@@ -326,7 +361,7 @@
 					}
 				});
 
-				context.lineWidth = 1 / 256;
+				context.lineWidth = 1.25;//64 / 256;
 				context.stroke();
 
 				// draw the hands
@@ -342,7 +377,6 @@
 					context.strokeStyle = "#0F0";
 				}
 				context.rect(handLeft.x - 25, handLeft.y - 25, 50, 50);
-				context.lineWidth = 1 / 32
 				context.stroke();
 
 				context.beginPath();
@@ -351,7 +385,6 @@
 					context.strokeStyle = "#0F0";
 				}
 				context.rect(handRight.x - 25, handRight.y - 25, 50, 50);
-				context.lineWidth = 1 / 32
 				context.stroke();
 
 				/*
@@ -365,11 +398,13 @@
 				var face = faces[trackingObject.id];
 				if (face) {
 					face.points2d.forEach(function (p) {
-						context.fillRect(p.x, p.y, 1 / 64, 1 / 64);
+						context.fillRect(p.x, p.y, 1.25, 1.25);
 					});
 				}
+
 			});
 		}
+
 	</script>
 	<script id="shader-vs" type="x-shader/x-vertex"> 
 		attribute vec3 aPos;
@@ -832,18 +867,53 @@
 	<script id="shader-fs-add-mouse-motion" type="x-shader/x-fragment"> 
 		uniform sampler2D sampler_fluid;
 
-		float mouseFilter(vec2 uv){
-			return clamp( 1.-length((uv-mouse)*texSize)/2., 0. , 1.);
+		float filter(vec2 uv, vec2 pos){
+			return clamp( 1.-length((uv-pos)*texSize)/2., 0. , 1.);
 		}
 
 		void main(void){
 			vec2 v = texture2D(sampler_fluid, uv).xz;
+			if(length(mouseV) > 0.){
+				v = mix(v, mouseV, filter(uv, mouse)*0.85);
+			}
+			float scale = 8.;
+			// first person left hand
+			if(length(mover0.zw) > 0.){
+				v = mix(v, mover0.zw*scale*texSize, filter(uv, mover0.xy)*0.85);
+			}
+			// first person right hand
+			if(length(mover1.zw) > 0.){
+				v = mix(v, mover1.zw*scale*texSize, filter(uv, mover1.xy)*0.85);
+			}
 
-			if(length(mouseV) > 0.)
-				v = mix(v, mouseV*2., mouseFilter(uv)*0.85);
+			// second person left hand
+			if(length(mover2.zw) > 0.){
+				v = mix(v, mover2.zw*scale*texSize, filter(uv, mover2.xy)*0.85);
+			}
+			// second person right hand
+			if(length(mover3.zw) > 0.){
+				v = mix(v, mover3.zw*scale*texSize, filter(uv, mover3.xy)*0.85);
+			}
+			// third person left hand
+			if(length(mover4.zw) > 0.){
+				v = mix(v, mover4.zw*scale*texSize, filter(uv, mover4.xy)*0.85);
+			}
+			// third person right hand
+			if(length(mover5.zw) > 0.){
+				v = mix(v, mover5.zw*scale*texSize, filter(uv, mover5.xy)*0.85);
+			}
+			// 4th person left hand
+			if(length(mover6.zw) > 0.){
+				v = mix(v, mover6.zw*scale*texSize, filter(uv, mover6.xy)*0.85);
+			}
+			// 4th person right hand
+			if(length(mover7.zw) > 0.){
+				v = mix(v, mover7.zw*scale*texSize, filter(uv, mover7.xy)*0.85);
+			}
 
 			gl_FragColor.xz = v;
 		}
+
 	</script>
 
 	<script id="shader-fs-advect" type="x-shader/x-fragment"> 
@@ -1318,7 +1388,7 @@
 			texture_blur6 = createAndBindTexture(new Float32Array(pixels6), 32, FBO_blur6, gl.LINEAR);
 
 			FBO_canvas2d = gl.createFramebuffer();
-			texture_canvas2d = createAndBindTexture(new Float32Array(pixels), 1, FBO_canvas2d, gl.LINEAR);
+			texture_canvas2d = createAndBindTexture(new Uint8Array(pixels), 1, FBO_canvas2d, gl.LINEAR, gl.UNSIGNED_BYTE);
 
 			FBO_noise = gl.createFramebuffer();
 			glPixels = new Float32Array(noisePixels);
@@ -1422,11 +1492,14 @@
 			return program;
 		}
 
-		function createAndBindTexture(glPixels, scale, fbo, filter) {
+		function createAndBindTexture(glPixels, scale, fbo, filter, type) {
+			if (type == undefined) {
+				type = gl.FLOAT;
+			}
 			var texture = gl.createTexture();
 			gl.bindTexture(gl.TEXTURE_2D, texture);
 			gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sizeX / scale, sizeY / scale, 0, gl.RGBA, gl.FLOAT, glPixels);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sizeX / scale, sizeY / scale, 0, gl.RGBA, type, glPixels);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
 			gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
@@ -1493,6 +1566,11 @@
 			gl.uniform1i(gl.getUniformLocation(program, "sampler_particle_projection"), 13);
 			gl.uniform1i(gl.getUniformLocation(program, "sampler_canvas2d"), 14);
 
+			gl.uniform4f(gl.getUniformLocation(program, "midifader1"), getMidi(0), getMidi(1), getMidi(2), getMidi(3));
+			gl.uniform4f(gl.getUniformLocation(program, "midifader2"), getMidi(4), getMidi(5), getMidi(6), getMidi(7));
+			gl.uniform4f(gl.getUniformLocation(program, "midiknob1"), getMidi(16), getMidi(17), getMidi(18), getMidi(19));
+			gl.uniform4f(gl.getUniformLocation(program, "midiknob2"), getMidi(20), getMidi(21), getMidi(22), getMidi(23));
+
 			setMoverUniforms(program);
 		}
 
@@ -1508,8 +1586,9 @@
 			activeTrackingObjects.forEach(function (trackingObject) {
 				var stickman = trackingObject.stickman;
 				var body = trackingObject.body;
-				var x = 0.5 + (stickman.joints['Head'].x - 0.5) * 0.5;
-				var y = 0.5 + (stickman.joints['Head'].y - 0.5) * 0.5;
+				project(body.head, p2d); // current projection
+				var x = p2d.x / sizeX;
+				var y = 1 - p2d.y / sizeY;
 				gl.uniform2f(gl.getUniformLocation(program, "head" + bodyIndex), x, y);
 				var col = colors[bodyIndex];
 				gl.uniform4f(gl.getUniformLocation(program, "col" + bodyIndex), col[0], col[1], col[2], 1);
@@ -1693,14 +1772,11 @@
 			gl.useProgram(prog_fluid_add_mouse_motion);
 			gl.activeTexture(gl.TEXTURE0);
 			gl.bindTexture(gl.TEXTURE_2D, texture_fluid_v);
-			gl.uniform2f(gl.getUniformLocation(prog_fluid_add_mouse_motion, "aspect"), Math.max(1, viewX / viewY), Math.max(1, viewY / viewX));
-			gl.uniform2f(gl.getUniformLocation(prog_fluid_add_mouse_motion, "mouse"), mouseX, mouseY);
-			gl.uniform2f(gl.getUniformLocation(prog_fluid_add_mouse_motion, "mouseV"), mouseDx, mouseDy);
+			setUniforms(prog_fluid_add_mouse_motion);
 			gl.uniform2f(gl.getUniformLocation(prog_fluid_add_mouse_motion, "pixelSize"), 1. / (sizeX / simScale), 1. / (sizeY / simScale));
 			gl.uniform2f(gl.getUniformLocation(prog_fluid_add_mouse_motion, "texSize"), (sizeX / simScale), (sizeY / simScale));
 			renderAsTriangleStrip(FBO_fluid_backbuffer);
 		}
-
 		function advect() {
 			gl.viewport(0, 0, (sizeX / simScale), (sizeY / simScale));
 			gl.useProgram(prog_fluid_advect);
@@ -1808,7 +1884,9 @@
 
 			updateStickMen();
 
-			canvas2dContext.clearRect(0, 0, sizeX, sizeY);
+			canvas2dContext.fillStyle = "#000";
+
+			canvas2dContext.fillRect(0, 0, sizeX, sizeY);
 
 			drawStickMen(canvas2dContext);
 
@@ -1889,6 +1967,7 @@
 			}
 			c.width = viewX;
 			c.height = viewY;
+			updateApectRatio();
 		}
 
 		function setDesiredFps(tb) {
