@@ -248,8 +248,8 @@
 			p2d.y = p3d.y;
 			var w = Math.atan2(-p3d.x, -p3d.y);
 			var l = Math.sqrt(p3d.x * p3d.x + p3d.y * p3d.y);
-			var d = 3.;
-			var zoom = 3;
+			var d = 0.5;
+			var zoom = 1.;
 			var p = Math.tan(Math.PI / 2 + Math.atan2(d + p3d.z, l));
 			d = Math.sqrt(p3d.x * p3d.x + p3d.y * p3d.y + (p3d.z + d) * (p3d.z + d));
 			p2d.x = zoom * Math.sin(w) * p / aspectx + 0.5;
@@ -644,7 +644,7 @@
 
 			this.frame = 0;
 			this.advance = function () {
-				for (var n = 0; n < 5; n++) {
+				for (var n = 0; n < 6; n++) {
 
 					// apply spring forces
 					for (i = 1; i < 4; i++) {
