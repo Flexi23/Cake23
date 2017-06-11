@@ -1,0 +1,11 @@
+﻿<html>
+<head>
+	<title>index</title>
+</head>
+<body>
+	@foreach (var filename in Model.FileNames)
+	{
+		<a href="@filename">@filename</a><br/>
+	}
+</body>
+</html>

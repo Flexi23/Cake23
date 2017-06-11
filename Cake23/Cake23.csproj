@@ -238,6 +238,7 @@
     </None>
     <AppDesigner Include="Properties\" />
     <None Include="WebTemplates\burningman.cshtml" />
+    <None Include="WebTemplates\index.cshtml" />
     <None Include="WebTemplates\spline-editor.cshtml" />
     <None Include="WebTemplates\poi-toy-midichlorian.cshtml" />
     <None Include="WebTemplates\poi-toy-onion-skinning.cshtml" />

@@ -38,7 +38,7 @@ namespace Cake23.Connection.Server
 			app.MapSignalR();
 
 			HttpConfiguration config = new HttpConfiguration();
-			config.Routes.MapHttpRoute("Templates", "client/{templateName}", new { controller = "Template", templateName = "default" });
+			config.Routes.MapHttpRoute("Templates", "client/{templateName}", new { controller = "Template", templateName = "index" });
 			app.UseWebApi(config);
 
 		}
