@@ -2,11 +2,8 @@
 using Microsoft.Kinect;
 using Microsoft.Kinect.Face;
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Cake23.Connection.Clients.Kinect2
 {
@@ -16,7 +13,7 @@ namespace Cake23.Connection.Clients.Kinect2
 	{
 		public string ClientName
 		{
-			get { return "Face Model"; }
+			get { return "Face Mesher"; }
 		}
 
 		public Logger Logger { get; set; }
@@ -32,6 +29,25 @@ namespace Cake23.Connection.Clients.Kinect2
 		private CultureInfo ci = new CultureInfo("en-US", true);
 
 		public event FaceFrameAsJSON AsJSON;
+
+		private bool _active = false;
+		public bool Active
+		{
+			get { return _active; }
+			set
+			{
+				if (_active != value)
+				{
+					_active = value;
+					this.Log(value ? "Activated" : "Deactivated");
+				}
+			}
+		}
+
+		public void Set(bool active)
+		{
+			Active = active;
+		}
 
 		public Face(KinectSensor sensor, BodyFrameReader bodyReader)
 		{
@@ -138,6 +154,9 @@ namespace Cake23.Connection.Clients.Kinect2
 
 		private void HdFaceReader_FrameArrived(object sender, HighDefinitionFaceFrameArrivedEventArgs e)
 		{
+			if (!_active)
+				return;
+
 			using (var frame = e.FrameReference.AcquireFrame())
 			{
 				// We might miss the chance to acquire the frame; it will be null if it's missed.

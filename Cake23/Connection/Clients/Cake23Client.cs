@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace Cake23.Connection.Clients
 {
-    public abstract class Cake23Client : Cake23Connection
+	public abstract class Cake23Client : Cake23Connection
 	{
 		protected abstract string Name { get; }
 
@@ -15,7 +15,7 @@ namespace Cake23.Connection.Clients
 			get { return Name + " Client"; }
 		}
 
-		public abstract void Setup();
+		public abstract void Setup(Cake23Application cake23);
 
 		private static IEnumerable<Type> clientTypes = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsClass && !type.IsAbstract && typeof(Cake23Client).IsAssignableFrom(type));
 
@@ -24,7 +24,7 @@ namespace Cake23.Connection.Clients
 			get { return clientTypes.Select(type => type.Name).ToList(); }
 		}
 
-		public static Cake23Client Create(string userName, string typeName, Logger logger = null)
+		public static Cake23Client Create(Cake23Application cake23, string userName, string typeName, Logger logger = null)
 		{
 			if (typeName != null)
 			{
@@ -39,7 +39,7 @@ namespace Cake23.Connection.Clients
 							client.Logger = logger;
 						}
 						client.UserName = userName;
-						client.Setup();
+						client.Setup(cake23);
 						return client;
 					}
 				}

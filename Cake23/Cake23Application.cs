@@ -12,274 +12,292 @@ using System.Windows.Input;
 
 namespace Cake23
 {
-    public class Cake23Application : ViewModelBase, IHasLogger
-    {
-        public Logger Logger { get; set; }
-        public string ClientName
-        {
-            get { return ""; }
-        }
+	public delegate void SetFaceTracking(bool active);
 
-        private string _title;
-        public string Title
-        {
-            get { return _title; }
-            set
-            {
-                _title = value;
-                OnPropertyChanged(() => Title);
-            }
-        }
+	public class Cake23Application : ViewModelBase, IHasLogger
+	{
+		public event SetFaceTracking FaceTrackingChanged;
+		public Logger Logger { get; set; }
+		public string ClientName
+		{
+			get { return ""; }
+		}
 
-        private Cake23Host host = Cake23Host.GetInstance();
-        private List<Cake23Connection> connections = new List<Cake23Connection>();
-        private string _remoteURL = "";
+		private string _title;
+		public string Title
+		{
+			get { return _title; }
+			set
+			{
+				_title = value;
+				OnPropertyChanged(() => Title);
+			}
+		}
 
-        public bool IsHosting
-        {
-            get { return host.IsListening; }
-        }
+		private Cake23Host host = Cake23Host.GetInstance();
+		private List<Cake23Connection> connections = new List<Cake23Connection>();
+		private string _remoteURL = "";
 
-        public bool IsConnected
-        {
-            get { return connections.Any(c => c.IsConnected); }
-        }
+		public bool IsHosting
+		{
+			get { return host.IsListening; }
+		}
 
-        public bool CanEditHostname
-        {
-            get { return !IsHosting && !IsConnected; }
-        }
+		public bool IsConnected
+		{
+			get { return connections.Any(c => c.IsConnected); }
+		}
 
-        private string _hostname;
-        public string Hostname
-        {
-            get { return _hostname; }
-            set
-            {
-                _hostname = value;
-                Cake23Host.GetInstance().UpdateURL(Hostname, Port);
-                OnPropertyChanged(() => Hostname);
-            }
-        }
+		public bool CanEditHostname
+		{
+			get { return !IsHosting && !IsConnected; }
+		}
 
-        private string _username;
-        public string UserName
-        {
-            get { return _username; }
-            set
-            {
-                Cake23Host.GetInstance().Connection.UserName = _username = value;
-                OnPropertyChanged(() => UserName);
-            }
-        }
+		private string _hostname;
+		public string Hostname
+		{
+			get { return _hostname; }
+			set
+			{
+				_hostname = value;
+				Cake23Host.GetInstance().UpdateURL(Hostname, Port);
+				OnPropertyChanged(() => Hostname);
+			}
+		}
 
-        public bool CanEditUsername
-        {
-            get { return !IsHosting; }
-        }
+		private string _username;
+		public string UserName
+		{
+			get { return _username; }
+			set
+			{
+				Cake23Host.GetInstance().Connection.UserName = _username = value;
+				OnPropertyChanged(() => UserName);
+			}
+		}
 
-        private int _port;
-        public int Port
-        {
-            get { return _port; }
-            set
-            {
-                _port = value;
-                Cake23Host.GetInstance().UpdateURL(Hostname, Port);
-                OnPropertyChanged(() => Port);
-            }
-        }
+		public bool CanEditUsername
+		{
+			get { return !IsHosting; }
+		}
 
-        private string _log;
-        public string Log
-        {
-            get { return _log; }
-            set
-            {
-                _log = value;
-                OnPropertyChanged(() => Log);
-            }
-        }
+		private int _port;
+		public int Port
+		{
+			get { return _port; }
+			set
+			{
+				_port = value;
+				Cake23Host.GetInstance().UpdateURL(Hostname, Port);
+				OnPropertyChanged(() => Port);
+			}
+		}
 
-        private bool _allowCORS = false;
-        public bool AllowCORS
-        {
-            get { return _allowCORS; }
-            set
-            {
-                if (_allowCORS != value)
-                {
-                    _allowCORS = value;
-                    OnPropertyChanged(() => AllowCORS);
-                    host.AllowCORS = AllowCORS;
-                }
-            }
-        }
+		private string _log;
+		public string Log
+		{
+			get { return _log; }
+			set
+			{
+				_log = value;
+				OnPropertyChanged(() => Log);
+			}
+		}
 
-        private ICommand _connectCmd;
-        public ICommand ConnectCommand
-        {
-            get
-            {
-                if (_connectCmd == null)
-                {
-                    _connectCmd = new DelegateCommand(ConnectAll, CanConnect);
-                }
-                return _connectCmd;
-            }
+		private bool _allowCORS = false;
+		public bool AllowCORS
+		{
+			get { return _allowCORS; }
+			set
+			{
+				if (_allowCORS != value)
+				{
+					_allowCORS = value;
+					OnPropertyChanged(() => AllowCORS);
+					host.AllowCORS = AllowCORS;
+				}
+			}
+		}
 
-            private set { _connectCmd = value; }
-        }
+		private bool _faceTracking = false;
+		public bool FaceTracking
+		{
+			get { return _faceTracking; }
+			set
+			{
+				if (_faceTracking != value)
+				{
+					_faceTracking = value;
+					OnPropertyChanged(() => FaceTracking);
+					FaceTrackingChanged?.Invoke(value);
+				}
+			}
+		}
 
-        private bool CanConnect(object arg)
-        {
-            return connections.All(c => c.CanConnect(arg));
-        }
+		private ICommand _connectCmd;
+		public ICommand ConnectCommand
+		{
+			get
+			{
+				if (_connectCmd == null)
+				{
+					_connectCmd = new DelegateCommand(ConnectAll, CanConnect);
+				}
+				return _connectCmd;
+			}
 
-        private void ConnectAll(object obj)
-        {
-            if (!host.IsListening)
-            {
-                // in case we're not self-hosting, we must first establish the "say hi" connection.
-                host.Connection.Connect();
-            }
+			private set { _connectCmd = value; }
+		}
 
-            if (CanConnect(obj))
-            {
-                _remoteURL = "http://" + Hostname + ":" + Port;
+		private bool CanConnect(object arg)
+		{
+			return connections.All(c => c.CanConnect(arg));
+		}
 
-                OnPropertyChanged(() => CanEditHostname);
-                connections.ForEach(c =>
-                {
-                    c.UserName = UserName;
-                    c.Connect(obj);
-                });
-            }
-        }
+		private void ConnectAll(object obj)
+		{
+			if (!host.IsListening)
+			{
+				// in case we're not self-hosting, we must first establish the "say hi" connection.
+				host.Connection.Connect();
+			}
 
-        private ICommand _hostCmd;
-        public ICommand HostCommand
-        {
-            get
-            {
-                if (_hostCmd == null)
-                {
-                    _hostCmd = new DelegateCommand(Host, CanHost);
-                }
-                return _hostCmd;
-            }
-            private set { _hostCmd = value; }
-        }
+			if (CanConnect(obj))
+			{
+				_remoteURL = "http://" + Hostname + ":" + Port;
 
-        private bool CanHost(object arg)
-        {
-            return !IsHosting;
-        }
+				OnPropertyChanged(() => CanEditHostname);
+				connections.ForEach(c =>
+				{
+					c.UserName = UserName;
+					c.Connect(obj);
+				});
+			}
+		}
 
-        private void Host(object obj)
-        {
-            if (!host.IsListening)
-            {
-                host.StartListening(Hostname);
-                OnPropertyChanged(() => IsHosting);
-                OnPropertyChanged(() => CanEditHostname);
-            }
-        }
+		private ICommand _hostCmd;
+		public ICommand HostCommand
+		{
+			get
+			{
+				if (_hostCmd == null)
+				{
+					_hostCmd = new DelegateCommand(Host, CanHost);
+				}
+				return _hostCmd;
+			}
+			private set { _hostCmd = value; }
+		}
 
-        private ICommand _stopCmd;
-        public ICommand StopCommand
-        {
-            get
-            {
-                if (_stopCmd == null)
-                {
-                    _stopCmd = new DelegateCommand(Stop, CanStop);
-                }
-                return _stopCmd;
-            }
+		private bool CanHost(object arg)
+		{
+			return !IsHosting;
+		}
 
-            private set { _stopCmd = value; }
-        }
+		private void Host(object obj)
+		{
+			if (!host.IsListening)
+			{
+				host.StartListening(Hostname);
+				OnPropertyChanged(() => IsHosting);
+				OnPropertyChanged(() => CanEditHostname);
+			}
+		}
 
-        private bool CanStop(object arg)
-        {
-            return IsHosting || IsConnected;
-        }
+		private ICommand _stopCmd;
+		public ICommand StopCommand
+		{
+			get
+			{
+				if (_stopCmd == null)
+				{
+					_stopCmd = new DelegateCommand(Stop, CanStop);
+				}
+				return _stopCmd;
+			}
 
-        private void Stop(object obj)
-        {
-            if (IsConnected)
-            {
-                _remoteURL = "";
-                connections.ForEach(c => c.Unconnect(obj));
-            }
+			private set { _stopCmd = value; }
+		}
 
-            if (IsHosting)
-            {
-                host.Stop();
-            }
+		private bool CanStop(object arg)
+		{
+			return IsHosting || IsConnected;
+		}
 
-            OnPropertyChanged(() => IsHosting);
-            OnPropertyChanged(() => CanEditHostname);
-        }
+		private void Stop(object obj)
+		{
+			if (IsConnected)
+			{
+				_remoteURL = "";
+				connections.ForEach(c => c.Unconnect(obj));
+			}
 
-        private ICommand _getPublicIPCmd;
-        public ICommand GetPublicIPCommand
-        {
-            get
-            {
-                if (_getPublicIPCmd == null)
-                {
-                    _getPublicIPCmd = new DelegateCommand(GetPublicIP);
-                }
-                return _getPublicIPCmd;
-            }
-            private set { _getPublicIPCmd = value; }
-        }
+			if (IsHosting)
+			{
+				host.Stop();
+			}
 
-        private void GetPublicIP(object obj)
-        {
-            var getPublicIP = new BackgroundWorker();
-            getPublicIP.DoWork += getPublicIP_DoWork;
-            getPublicIP.RunWorkerAsync();
-        }
+			OnPropertyChanged(() => IsHosting);
+			OnPropertyChanged(() => CanEditHostname);
+		}
 
-        public string RequestPublicIP()
-        {
-            var request = WebRequest.Create("http://checkip.dyndns.org/");
-            var response = request.GetResponse();
-            var stream = new StreamReader(response.GetResponseStream());
-            var direction = stream.ReadToEnd();
-            stream.Close(); response.Close();
-            int first = direction.IndexOf("Address: ") + 9;
-            int last = direction.IndexOf("</body></html>");
-            return direction.Substring(first, last - first);
-        }
+		private ICommand _getPublicIPCmd;
+		public ICommand GetPublicIPCommand
+		{
+			get
+			{
+				if (_getPublicIPCmd == null)
+				{
+					_getPublicIPCmd = new DelegateCommand(GetPublicIP);
+				}
+				return _getPublicIPCmd;
+			}
+			private set { _getPublicIPCmd = value; }
+		}
 
-        void getPublicIP_DoWork(object sender, DoWorkEventArgs e)
-        {
-            this.Log("according to dyndns.org, your public IP is " + RequestPublicIP());
-        }
+		private void GetPublicIP(object obj)
+		{
+			var getPublicIP = new BackgroundWorker();
+			getPublicIP.DoWork += getPublicIP_DoWork;
+			getPublicIP.RunWorkerAsync();
+		}
 
-        public Cake23Application()
-        {
-            host.Logger = this.Logger = new Logger();
-            Title = "Cake23 | WebSocket Hub for Kinect v2 and MIDI controllers";
-            Hostname = Dns.GetHostName();
-            Port = 9000;
-            UserName = Environment.UserName + "@" + Hostname;
-        }
+		public string RequestPublicIP()
+		{
+			var request = WebRequest.Create("http://checkip.dyndns.org/");
+			var response = request.GetResponse();
+			var stream = new StreamReader(response.GetResponseStream());
+			var direction = stream.ReadToEnd();
+			stream.Close(); response.Close();
+			int first = direction.IndexOf("Address: ") + 9;
+			int last = direction.IndexOf("</body></html>");
+			return direction.Substring(first, last - first);
+		}
 
-        internal void Setup()
-        {
-            foreach (var clientTypeName in Cake23Client.AvailableTypeNames)
-            {
-                var client = Cake23Client.Create(UserName, clientTypeName, Logger);
-                if (client != null)
-                {
-                    connections.Add(client);
-                }
-            }
-        }
-    }
+		void getPublicIP_DoWork(object sender, DoWorkEventArgs e)
+		{
+			this.Log("according to dyndns.org, your public IP is " + RequestPublicIP());
+		}
+
+		public Cake23Application()
+		{
+			host.Logger = this.Logger = new Logger();
+			Title = "Cake23 | WebSocket Hub for Kinect v2 and MIDI controllers";
+			Hostname = Dns.GetHostName();
+			Port = 9000;
+			UserName = Environment.UserName + "@" + Hostname;
+		}
+
+		internal void Setup()
+		{
+			foreach (var clientTypeName in Cake23Client.AvailableTypeNames)
+			{
+				var client = Cake23Client.Create(this, UserName, clientTypeName, Logger);
+				if (client != null)
+				{
+					connections.Add(client);
+				}
+			}
+		}
+	}
 }

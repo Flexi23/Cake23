@@ -7,9 +7,9 @@ using System.Linq;
 
 namespace Cake23.Connection.Clients.Kinect2
 {
-    public class Cake23Kinect2Client : Cake23Client
+	public class Cake23Kinect2Client : Cake23Client
 	{
-				
+
 		protected override string Name
 		{
 			get { return "Kinect v2 Sensor"; }
@@ -29,15 +29,19 @@ namespace Cake23.Connection.Clients.Kinect2
 
 		private Face faceTracker = null;
 
-		public override void Setup()
+		private Cake23Application cake23;
+
+		public override void Setup(Cake23Application cake23)
 		{
+			this.cake23 = cake23;
 			kinectSensor = KinectSensor.GetDefault();
 			coordinateMapper = kinectSensor.CoordinateMapper;
 			bodyFrameReader = kinectSensor.BodyFrameSource.OpenReader();
 			kinectSensor.IsAvailableChanged += Sensor_IsAvailableChanged;
 			faceTracker = new Face(kinectSensor, bodyFrameReader);
 			faceTracker.AsJSON += faceJSON;
-			kinectSensor.Open();			
+			cake23.FaceTrackingChanged += faceTracker.Set;
+			kinectSensor.Open();
 			this.Log("open");
 			faceTracker.Logger = this.Logger;
 		}

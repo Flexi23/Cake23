@@ -8,7 +8,7 @@ using System.Windows.Input;
 
 namespace Cake23.Connection
 {
-    public abstract class Cake23Connection : ViewModelBase, IHasLogger
+	public abstract class Cake23Connection : ViewModelBase, IHasLogger
 	{
 		public Logger Logger { get; set; }
 

@@ -8,8 +8,11 @@ namespace Cake23.Connection.Clients.Midi
 	{
 		private SanfordMidiTracker midiTracker;
 
-		public override void Setup()
+		private Cake23Application cake23;
+
+		public override void Setup(Cake23Application cake23)
 		{
+			this.cake23 = cake23;
 			this.Log("setting up");
 			midiTracker = new SanfordMidiTracker(Logger);
 			midiTracker.ChannelMsg += midiTracker_ChannelMsg;

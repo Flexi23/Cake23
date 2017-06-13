@@ -33,6 +33,7 @@
 		<StackPanel Grid.Column="1">
 			<CheckBox IsChecked="{Binding Path=AllowCORS}" >Allow CORS</CheckBox>
 			<Button Command="{Binding Path=HostCommand}">Host</Button>
+			<CheckBox IsChecked="{Binding Path=FaceTracking}" >HD Face Mesh</CheckBox>
 			<Button Command="{Binding Path=ConnectCommand}">Connect</Button>
 			<Button Command="{Binding Path=StopCommand}">Stop</Button>
 			<Button Command="{Binding Path=GetPublicIPCommand}">Get Public IP</Button>
