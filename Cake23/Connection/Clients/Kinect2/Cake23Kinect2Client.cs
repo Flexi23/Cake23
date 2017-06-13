@@ -4,12 +4,10 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Cake23.Connection.Clients.Kinect2
 {
-	public class Cake23Kinect2Client : Cake23Client
+    public class Cake23Kinect2Client : Cake23Client
 	{
 				
 		protected override string Name

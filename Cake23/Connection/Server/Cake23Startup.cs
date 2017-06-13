@@ -11,37 +11,37 @@ using System.Web.Http;
 
 namespace Cake23.Connection.Server
 {
-	public class Cake23Startup
-	{
-		public void Configuration(IAppBuilder app)
-		{
+    public class Cake23Startup
+    {
+        public void Configuration(IAppBuilder app)
+        {
 #if DEBUG
-			app.UseErrorPage();
+            app.UseErrorPage();
 #endif
 
-			var staticWebContentPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\WebStaticContent";
-			var physicalFileSystem = new PhysicalFileSystem(staticWebContentPath);
-			var options = new FileServerOptions();
+            var staticWebContentPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\WebStaticContent";
+            var physicalFileSystem = new PhysicalFileSystem(staticWebContentPath);
+            var options = new FileServerOptions();
 
-			options.EnableDefaultFiles = true;
-			options.FileSystem = physicalFileSystem;
-			options.EnableDirectoryBrowsing = true;
+            options.EnableDefaultFiles = true;
+            options.FileSystem = physicalFileSystem;
+            options.EnableDirectoryBrowsing = true;
 
-			options.StaticFileOptions.FileSystem = physicalFileSystem;
-			options.StaticFileOptions.ServeUnknownFileTypes = true;
-			options.DefaultFilesOptions.DefaultFileNames = new[] { "index.html" };
+            options.StaticFileOptions.FileSystem = physicalFileSystem;
+            options.StaticFileOptions.ServeUnknownFileTypes = true;
+            options.DefaultFilesOptions.DefaultFileNames = new[] { "index.html" };
+            
+            if (Cake23Host.GetInstance().AllowCORS)
+                app.UseCors(CorsOptions.AllowAll);
 
-			// TODO: bind a checkbox to opt-in
-			app.UseCors(CorsOptions.AllowAll);
+            app.UseFileServer(options);
+            app.MapSignalR();
 
-			app.UseFileServer(options);
-			app.MapSignalR();
+            HttpConfiguration config = new HttpConfiguration();
+            config.Routes.MapHttpRoute("Templates", "client/{templateName}", new { controller = "Template", templateName = "index" });
+            app.UseWebApi(config);
 
-			HttpConfiguration config = new HttpConfiguration();
-			config.Routes.MapHttpRoute("Templates", "client/{templateName}", new { controller = "Template", templateName = "index" });
-			app.UseWebApi(config);
+        }
 
-		}
-
-	}
+    }
 }

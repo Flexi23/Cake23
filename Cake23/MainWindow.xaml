@@ -16,7 +16,7 @@
 				<TextBox Width="50" Text="{Binding Path=Port, Mode=TwoWay}" IsEnabled="{Binding Path=CanEditHostname}"></TextBox>
 			</StackPanel>
 			<StackPanel Orientation="Horizontal">
-				<TextBlock>Name: </TextBlock>
+				<TextBlock>Name:</TextBlock>
 				<TextBox Width="150" Text="{Binding Path=UserName, Mode=TwoWay}" IsEnabled="{Binding Path=CanEditUsername}"></TextBox>
 			</StackPanel>
 
@@ -31,6 +31,7 @@
 		</StackPanel>
 
 		<StackPanel Grid.Column="1">
+			<CheckBox IsChecked="{Binding Path=AllowCORS}" >Allow CORS</CheckBox>
 			<Button Command="{Binding Path=HostCommand}">Host</Button>
 			<Button Command="{Binding Path=ConnectCommand}">Connect</Button>
 			<Button Command="{Binding Path=StopCommand}">Stop</Button>

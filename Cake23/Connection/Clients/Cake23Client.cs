@@ -1,5 +1,4 @@
-﻿using Cake23.Connection.Server;
-using Cake23.Util;
+﻿using Cake23.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +6,7 @@ using System.Reflection;
 
 namespace Cake23.Connection.Clients
 {
-	public abstract class Cake23Client : Cake23Connection
+    public abstract class Cake23Client : Cake23Connection
 	{
 		protected abstract string Name { get; }
 

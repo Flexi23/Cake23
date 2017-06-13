@@ -1,11 +1,6 @@
 ﻿using Cake23.Connection.Clients;
 using Cake23.Util;
-using Microsoft.AspNet.SignalR.Client;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Cake23.Connection.Server
 {
