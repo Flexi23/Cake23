@@ -9,7 +9,7 @@
 	<script type="text/javascript">
 		// github.com/Flexi23/Cake23 | WebSocket Hub for Kinect v2 and MIDI controllers
 		$(function () {
-			$.connection.hub.url = "http://P502:9000/signalr"; var kinect = $.connection.kinect2Hub;
+			$.connection.hub.url = "@(Model.Host.URL)/signalr"; var kinect = $.connection.kinect2Hub;
 
 			kinect.client.onBody = function (bodyJson, projectionMappedPointsJson) {
 				body = JSON.parse(bodyJson);
