@@ -892,7 +892,7 @@
 			}
 
 			this.applyColor = this.patterns["rgb sines"]; // replace this anytime at runtime
-			this.applyColor = this.createTextPatternFn("3D Web Fest 2016  ", 0.5);
+			this.applyColor = this.createTextPatternFn("DEADLINE  2017  ", 0.5);
 
 			function P(m, e) {
 				return Math.pow(m, e);
@@ -1355,7 +1355,8 @@
 		
 			uvr -= fluid;
 			vec2 uv = uvr;
-			vec2 shrink = gradient(sampler_blur2, uv, pixelSize*8., vec4(0,0.,6,0))*pixelSize;
+
+			vec2 shrink = gradient(sampler_blur2, uv, pixelSize*8., vec4(0,0.,6,0))*pixelSize;
 			vec2 grow = gradient(sampler_blur, uv, pixelSize*4., vec4(0,0.,-1.,0))*pixelSize;
 
 			float sticky_scene = texture2D(sampler_prev, uvr + shrink + grow).z; // just the previous frame with the (zoom) warp on the hand positions
