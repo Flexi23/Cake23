@@ -1,6 +1,8 @@
 ﻿using Cake23.Connection.Clients;
 using Cake23.Util;
 using System.Collections.Generic;
+using System.Linq;
+using System;
 
 namespace Cake23.Connection.Server
 {
@@ -21,11 +23,17 @@ namespace Cake23.Connection.Server
 			if (CanConnect())
 			{
 				base.Connect(obj);
-				On<UserClient>("Register", OnRegister);
-			}
-		}
+                On<UserClient>("Register", OnRegister);
+                //On<string>("UpdateVirtualBox", OnUpdateVirtualBox);
+            }
+        }
 
-		public override void Unconnect(object obj = null)
+        private void OnUpdateVirtualBox(string virtualBoxByJSON)
+        {
+            this.Log("virtualbox updated: " + virtualBoxByJSON);
+        }
+
+        public override void Unconnect(object obj = null)
 		{
 			if (CanUnconnect())
 			{
@@ -45,6 +53,19 @@ namespace Cake23.Connection.Server
 		}
 
 		private Dictionary<string, List<string>> userClientsMap = new Dictionary<string, List<string>>();
+        public List<string> GetUserNames()
+        {
+            return userClientsMap.Keys.ToList();
+        }
+
+        public List<string> GetUserClients(string userName)
+        {
+            if (userClientsMap.ContainsKey(UserName))
+            {
+                return userClientsMap[userName].ToList(); // ToList to make a new list instance
+            }
+            return new List<string>(); // empty
+        }
 
 		internal void Register(UserClient uc)
 		{

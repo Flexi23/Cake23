@@ -120,8 +120,12 @@ namespace Cake23.Connection.Clients.Kinect2
 						}
 					}
 				}
-				var trackedBodyTrackingIdsJson = JsonConvert.SerializeObject(bodies.Where(b => b.IsTracked).Select(b => b.TrackingId));
-				Invoke("OnBodies", trackedBodyTrackingIdsJson, frame);
+                var trackedBodies = bodies.Where(b => b.IsTracked);
+                if(trackedBodies.Count() > 0)
+                {
+                    var trackedBodyTrackingIdsJson = JsonConvert.SerializeObject(trackedBodies.Select(b => b.TrackingId));
+				    Invoke("OnBodies", trackedBodyTrackingIdsJson, frame, UserName);
+                }
 			}
 		}
 

@@ -14,5 +14,10 @@ namespace Cake23.Connection.Server
 		{			
 			Clients.All.Register(uc);
 		}
-	}
+
+        public void UpdateVirtualBox(string virtualBoxByJSON)
+        {
+            Clients.All.UpdateVirtualBox(virtualBoxByJSON);
+        }
+    }
 }

@@ -299,5 +299,7 @@ namespace Cake23
 				}
 			}
 		}
+
+        // idea: list available client types to start and stop on demand
 	}
 }

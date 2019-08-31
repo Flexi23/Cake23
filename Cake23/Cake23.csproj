@@ -188,6 +188,7 @@
     <Compile Include="Connection\Server\Cake23HostConnection.cs" />
     <Compile Include="Connection\Server\Cake23Hub.cs" />
     <Compile Include="Connection\Clients\Kinect2\Kinect2Hub.cs" />
+    <Compile Include="Connection\Server\RemoteController.cs" />
     <Compile Include="Util\LoggerExtension.cs" />
     <Compile Include="Connection\Cake23Connection.cs" />
     <Compile Include="Connection\Clients\Cake23Client.cs" />
@@ -242,6 +243,10 @@
     <None Include="WebTemplates\herebedragons-node17.cshtml" />
     <None Include="WebTemplates\index.cshtml" />
     <None Include="WebTemplates\herebedragons.cshtml" />
+    <None Include="WebTemplates\remote\poitoy-pixel-drift.cshtml" />
+    <None Include="WebTemplates\remote\virtualbox.cshtml" />
+    <None Include="WebTemplates\remote\poitoy-blue-ink.cshtml" />
+    <None Include="WebTemplates\remote\index.cshtml" />
     <None Include="WebTemplates\suckerpunch+deadline.cshtml" />
     <None Include="WebTemplates\spline-editor.cshtml" />
     <None Include="WebTemplates\poi-toy-midichlorian.cshtml" />

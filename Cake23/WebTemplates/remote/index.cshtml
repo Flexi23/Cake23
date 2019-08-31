@@ -1,0 +1,25 @@
+﻿<html>
+<head>
+	<title>Index</title>
+</head>
+<body>
+    <h2>Cake23 index for host @(Model.Host.Connection.UserName)</h2>
+    @if (Model.Host.Connection.GetUserNames().Count() > 0)
+    {
+        <h3>connected users</h3>
+        <ul>
+        @foreach (var userName in Model.Host.Connection.GetUserNames())
+        {
+            <li><a href="@(Model.Host.URL)/remote/index/@userName">@userName</a></li>
+        }
+        </ul>
+    }
+    <h3>views for @(Model.UserName)</h3>
+    <ul>
+	@foreach (var filename in Model.FileNames)
+	{
+		<li><a href="@(Model.Host.URL)/remote/@filename/@(Model.UserName)">@filename</a></li>
+	}
+    </ul>
+</body>
+</html>
