@@ -1,6 +1,6 @@
 ﻿<html>
 <head>
-	<title> Inkstorm + Physarum </title>
+	<title> Ectoplasmic Tentacle Explorer </title>
 	<script src="@(Model.Host.URL)/Scripts/jquery-1.6.4.min.js"></script>
 	<script src="@(Model.Host.URL)/Scripts/jquery.signalR-2.2.0.min.js"></script>
 	<script src="@(Model.Host.URL)/signalr/hubs"></script>
@@ -2177,7 +2177,7 @@
 			float d = length(pos*aspect) * 0.01;
 	
 			float dir = 0.002;
-			vec2 warp = - pos / d * d * 3. * pixelSize * aspect;
+			vec2 warp = - pos / d * d * 12. * pixelSize * aspect;
 			if( moverState == 3 && length(warp) > length(p.zw)){
 				p.zw += warp*aspect;
 			}
@@ -2292,89 +2292,41 @@
 	}
     </script>
 	<script id="shader-fs-move-particles" type="x-shader/x-fragment">
-    void main(void){
+	
+	void main(void){
+		// #move
 		vec4 p = texture2D(sampler_particles, uv); // residual location and velocity of the particle in the previous frame
 		vec2 f = texture2D(sampler_fluid, p.xy).xz*pixelSize; // fluid simulation flow vector
-		vec4 noise = texture2D(sampler_noise, p.xy + rnd.xy)*2. - vec4(1.);
-		vec4 rawParticleProjection = texture2D(sampler_particle_projection, p.xy);
-		
-		// mix with fluid simulation flow vector
-		p.zw = mix(p.zw, f*0.5,  float(length(p.zw) < length(f*0.5))); // winner is the one with the higher velocity
-
-
-		// give still standing points a kick in a random direction
-		if(length(p.zw) == 0.)
-		{
-			p.zw = 0.1 * pixelSize * aspect * noise.xy / length(noise.xy);
+		vec4 noise = texture2D(sampler_noise, p.xy)*2. - vec4(1.);
+	
+		// apply forces
+		p.zw += gradient(sampler_blur6, p.xy, pixelSize * 32., vec4(-0.,0.,0.,2.)) * pixelSize;
+		p.zw += + gradient(sampler_blur5, p.xy, 16.*pixelSize, vec4(0,0,0,-0.75)) * pixelSize;
+		p.zw += + gradient(sampler_blur4, p.xy, 16.*pixelSize, vec4(0,0,0.,-1.25)) * pixelSize;
+		p.zw += + gradient(sampler_blur3, p.xy, 8.*pixelSize, vec4(-2.,-1.33,0,1.)) * pixelSize;
+		//p.zw += + gradient(sampler_blur, p.xy, 4.*pixelSize, vec4(0,0,0,2.)) * pixelSize;
+		p.zw += + gradient(sampler_blur, p.xy, 4.*pixelSize, vec4(4.,-0.33,0,0.75)) * pixelSize;
+			
+		vec2 oo = vec2(0);
+		// oo += gradient(sampler_blur, p.xy, pixelSize*4., vec4(0.,1.,0.,4.))*pixelSize; // move from alpha, smooth
+		// oo += rot90(gradient(sampler_blur2, p.xy, pixelSize*8., vec4(0.,0,0.,-8.)))*pixelSize; // move orthogonal to the gradient
+			
+		p = applyMoverForces(p, f+oo); // fluid + other offset
+		float index = ((uv.y-0.5/particleTexSize.y) + (uv.x-0.5/particleTexSize.x) * particleTexSize.y) * particleTexSize.x;
+		float particleCount = particleTexSize.x * particleTexSize.y;
+		index /= particleCount;
+		if(activeRange.x < index && index < activeRange.y && noise.x > 1.){
+			p.xy = mix(oldPen, pen-oo, (index - activeRange.x)/(activeRange.y - activeRange.x));
+			p.zw = vec2(0)+ noise.zw/1024./6.*0.;
+		}else{
+			//p.xy += noise.zw*pixelSize.xy/4.;
 		}
-		
-		
-		// The following lines are an attempt to resemble the physarum multi agent algorithm as sketched here by Sage Jensen: https://www.sagejenson.com/physarum
-		// This fragment shader updates 2d locations and velocities of a 4-component float framebuffer object. The heading angle can be computed on the fly like:
-
-		float headingAngle = atan2(p.z, p.w);
-		
-		// Later the points are rendered using additive blending with varying saturation rates for an extended dynamic range in red green blue <3,2,1> orange glow
-		// See the rawParticleProjection declaration further up in this function for direct sampling example. Take a look at each channel in a separate grayscale view in the composite shader.
-		// To diffuse one of the channels, it must be copied to another channel in the main texture feedback loop shader program, which output is piped as input for the Gaussian blur pyramid.
-
-		// #physarum difference gradient sensing
-		
-		float sensorAngle = 30. / 360. * 2. * pi;
-		
-		float front      = headingAngle;
-		float frontLeft  = front - sensorAngle;
-		float frontRight = front + sensorAngle;
-
-		float sensorDistance = length(pixelSize) * 6.;
-		
-		vec2 frontLeftTapUv  = p.xy + vec2(sin(frontLeft),  cos(frontLeft)  ) * sensorDistance;
-		vec2 frontTapUv      = p.xy + vec2(sin(front),      cos(front)      ) * sensorDistance;
-		vec2 frontRightTapUv = p.xy + vec2(sin(frontRight), cos(frontRight) ) * sensorDistance;
-
-		vec4 select = vec4(0,0,0,1); // tap alpha
-
-		float leftTap = dot(texture2D(sampler_blur, frontLeftTapUv),select);
-		float centerTap = dot(texture2D(sampler_blur, frontTapUv),select);
-		float rightTap = dot(texture2D(sampler_blur, frontRightTapUv),select);
-		
-		float noChange = float(centerTap > leftTap + rightTap);
-		float turnRandomly = float(centerTap * 2. < leftTap + rightTap);
-
-		float turnDifferentially = -(leftTap-rightTap) * 1.;
-		
-		if(noChange == 1.)
-		{
-			// nop
-		}
-		else
-		if(turnRandomly == 1.)
-		{
-			p.zw += noise.yx * pixelSize/16.;
-			//headingAngle += noise.z*0.0125;
-		}
-		else
-		{
-			headingAngle += turnDifferentially;
-		}
-
-		p.zw = vec2(sin(headingAngle), cos(headingAngle)) * length(p.zw);
-
-		// end of physarum difference gradient sensing
-
-		p = applyMoverForces(p, 0.*vec2(1)); // fluid + other offset
-		
-		
-		p.zw = p.zw * max(0., 1.- (p.z*p.z + p.w*p.w)*64.); // (non-linear) friction
-		//p.zw = p.zw * max(0., 1.-rawParticleProjection.y/1024.); // brake on direct hit
-
-		//p.zw = vec2(0.);
-
-		// #move
-		p.xy += p.zw; // verlet integration
-
+	
+		p.zw = p.zw * max(0., 1.- (p.z*p.z + p.w*p.w)*32.); // (non-linear) friction
+		p.xy += p.zw / aspect.xy; // verlet integration
+	
 		gl_FragColor.xy = fract(p.xy); // wrap
-
+	
 		gl_FragColor.zw = p.zw; 
 	}
 	</script>
@@ -2386,21 +2338,21 @@
 		return warp;
 	}
 	// #warp and #react. the results of this program will be diffused
-	void main(void) {
+    void main(void) {
 		vec2 uv_orig = uv;
-		vec4 noise = texture2D(sampler_noise, uv + rnd.zw);
+		float noise = texture2D(sampler_noise, uv + rnd.zw).x - 0.5;
 		vec2 f = texture2D(sampler_fluid, uv).xz*pixelSize;
-
+	
 		//zooms on head position;
 		float zoom = -1.;
 		float zoom_exp = 1./8.;
 		float zoom_factor = 12.;
-
+	
 		zoom = 4.;
 		zoom_exp = 1./64.;
 		zoom_factor = 32.;
 		vec2 headwarp = uv;
-
+	
 		if(col0.a == 1.){
 			headwarp = uv_zoom_exp(headwarp, head0.xy, aspect, zoom, zoom_exp, zoom_factor);
 			headwarp = advanceMover(headwarp, moverState0, mover0, aspect, zoom, zoom_exp, zoom_factor);
@@ -2421,120 +2373,42 @@
 		if(col5.a == 1.){
 			headwarp = uv_zoom_exp(headwarp, head5.xy, aspect, zoom, zoom_exp, zoom_factor);
 		}
-
+	
 		gl_FragColor = vec4(0.);
 
-		vec4 rawPrev = texture2D(sampler_prev, uv);
-		vec4 rawBlur1 = texture2D(sampler_blur, uv);
-		vec4 rawBlur4 = texture2D(sampler_blur4, uv);
-		vec4 rawSplineScene = texture2D(sampler_spline_scene, uv);
-		vec4 rawStickyScene = texture2D(sampler_sticky_scene, uv - f * 2.);
+		vec4 rawPrev = texture2D(sampler_prev, uv - f*1.);
 		vec4 rawParticleProjection = texture2D(sampler_particle_projection, uv);
+	
+		// expanded particle projection
+		vec2 grad4 = gradient(sampler_blur4, uv, 10.*pixelSize, vec4(0,0.,1,0));
+		//vec2 grad3 = gradient(sampler_blur3, uv, 4.*pixelSize, vec4(0,0,0,1));
+		float d4 = length(grad4);
+		vec2 expansion = (0.5-d4*64.)*grad4*2.;
+		vec2 expanded_uv = uv + expansion;
+		vec4 expandedParticleProjection = texture2D(sampler_particle_projection, expanded_uv);
+		vec4 expandedPrev = texture2D(sampler_prev, expanded_uv);
 
-		// sustain and fade out particle projection in green
+		gl_FragColor.b = mix(rawPrev.b*0.98, 1., expandedParticleProjection.g);
+
 		gl_FragColor.g = mix(rawPrev.g*0.99 - 0.01, 1., rawParticleProjection.g);
 
 		// 12-tap circle in red
-		float rad = 2.5;
+		float rad = 1.5;
 		vec4 stats = vec4(1,0,0,0);
 		for(float i = 0.; i < 12.; i += 1.){
 			vec2 uv_tap = uv + vec2(sin(i/6.*pi),cos(i/6.*pi))*pixelSize*rad - f*1.;
-			float tap = texture2D(sampler_blur, uv_tap).r;
+			float tap = texture2D(sampler_prev, uv_tap).r;
 			stats.x = min(stats.x, tap);
 			stats.y = max(stats.y, tap);
 			stats.z += tap; // divide by 12 to get average
 		}
 
-		gl_FragColor.r = mix(stats.y*0.95, 1., rawParticleProjection.g);
-	
+		gl_FragColor.r = mix(stats.y*0.85, 1., gl_FragColor.g);
+			
 		// particle projection in alpha
-		float pp = texture2D(sampler_particle_projection, uv).b;
+		float pp = texture2D(sampler_particle_projection, uv).g;
 		gl_FragColor.a = pp;
-
-
-		// Conway's Game of Life in blue
-		float c = texture2D(sampler_prev, uv).b;
-		float thresh = 0.92;
-		int s = 0;
-		if (texture2D(sampler_prev, uv + pixelSize*vec2(0., 1)).b > thresh) s++;
-		if (texture2D(sampler_prev, uv - pixelSize*vec2(0., 1)).b > thresh) s++;
-		if (texture2D(sampler_prev, uv + pixelSize*vec2(1, 0.)).b > thresh) s++;
-		if (texture2D(sampler_prev, uv - pixelSize*vec2(1, 0.)).b > thresh) s++;
-		if (texture2D(sampler_prev, uv + pixelSize*vec2(1, 1)).b > thresh) s++;
-		if (texture2D(sampler_prev, uv - pixelSize*vec2(1, 1)).b > thresh) s++;
-		if (texture2D(sampler_prev, uv + pixelSize*vec2(1, -1)).b > thresh) s++;
-		if (texture2D(sampler_prev, uv - pixelSize*vec2(1, -1)).b > thresh) s++;
-		float gol = (c > thresh) ? (((s == 2) || (s == 3)) ? 1. : 0.) : (s == 3) ? 1. : 0.;
-
-		//gl_FragColor.b = max(gol, pp); // seed with the particle projection
-
-		vec2 uv = uv - f * 0.666;
-
-		vec2 uvb = uv;
-
-		uvb += gradient(sampler_blur, uv, pixelSize*4., vec4(0.,-4.,2.,2.))*pixelSize;
-		uvb += gradient(sampler_blur2, uv, pixelSize*8., vec4(-8.,-4.,0.,4.))*pixelSize;
-		uvb += gradient(sampler_blur3, uv, pixelSize*16., vec4(-1.,-2.,-6,-1.))*pixelSize;
-		
-		float spots_and_stripes = texture2D(sampler_prev, uvb).b;
-
-		spots_and_stripes += (texture2D(sampler_blur2, uvb).b - texture2D(sampler_blur3, uvb).b) * 1. - 0.00; 
-	
-		// look up the Von Neumann neighborhood
-		vec2 uv_vN = uv;
-		float vN_n = texture2D(sampler_prev, uv_vN + vec2(0,1)*pixelSize ).b;
-		float vN_e = texture2D(sampler_prev, uv_vN + vec2(1,0)*pixelSize ).b;
-		float vN_s = texture2D(sampler_prev, uv_vN + vec2(0,-1)*pixelSize).b;
-		float vN_w = texture2D(sampler_prev, uv_vN + vec2(-1,0)*pixelSize).b;
-		float vN_c = texture2D(sampler_prev, uv_vN + vec2(0,0)*pixelSize ).b;
-
-
-		float vN_max = max(max(max(vN_n, vN_e),max(vN_s,vN_w)),vN_c);
-		float vN_min = min(min(min(vN_n, vN_e),min(vN_s,vN_w)),vN_c);
-		float vN_avg = (vN_n + vN_e + vN_s + vN_w + vN_c) * 0.2;
-
-		spots_and_stripes += vN_max*0.4 - 0.25;
-
-		gl_FragColor.b = mix(spots_and_stripes, 1., smoothcircle(uv-mouse+0.5, aspect, 0.004, 512.));
-		gl_FragColor.b += rawSplineScene.r;
-
-		vec2 uvg = 0.5 + (uv - 0.5)
-			+ gradient(sampler_blur, uv, pixelSize*4., vec4(0.,0.133,-2.,0.))*pixelSize
-			+ gradient(sampler_blur3, uv, pixelSize*16., vec4(0.,-1.,0,1.))*pixelSize
-			+ gradient(sampler_blur2, uv, pixelSize*8., vec4(-0.,-1.,1.5,0.))*pixelSize
-			+ gradient(sampler_blur6, uv, 128. * pixelSize, vec4(-0.,-0.,0.,8.)) * pixelSize
-			//+ gradient(sampler_blur4, uv, pixelSize*16., vec4(3.,.0,0.,0.))*pixelSize
-			//+ vec2(0,-0.333)*pixelSize
-			;
-		gl_FragColor.g = texture2D(sampler_prev, uvg).g + (noise.w-0.5)*0.4/256. + 0.04/256.*2.;
-		gl_FragColor.g += (texture2D(sampler_prev, uvg + (noise.w-0.5)*pixelSize*.0).g - texture2D(sampler_blur4, uvg).g)*0.1
-			- texture2D(sampler_blur3, uvg).r*8./256.
-			//- texture2D(sampler_prev, uvg).b*16./256.
-			;
-
-		gl_FragColor.g = mix(gl_FragColor.g, 1., rawParticleProjection.b*noise.r*0.25);
-
-		// forget everything above and just use a single texture lookup in here, hehe
-		uv = uv_orig - applyMoverForces(vec4(uv_orig,- f*0.0), vec2(0)).zw*aspect.yx;
-		
-		// uv = max(vec2(0),min(vec2(1),uv)); // saturate
-		//uv = mirror(uv);
-		gl_FragColor = texture2D(sampler_prev, uv);
-
-		float t = -time/1800.;
-		vec4 rainbow = vec4(hsl2rgb(fract(t), 1., 0.5), 0);
-
-		// #palette parameters from iq | Palettes https://www.shadertoy.com/view/ll2GD3
-		vec4 borderCol = vec4(pal( t, vec3(0.5,0.5,0.5),vec3(0.5,0.5,0.5),vec3(1.0,1.0,1.0),vec3(0.0,0.10,0.20)),1); // rainbow;
-		gl_FragColor = mix(gl_FragColor, vec4(1)*borderCol, border(uv_orig, 16., texSize));
-		
-		// particle trail diffusion in alpha
-		gl_FragColor.a = max(mix(texture2D(sampler_prev, uv_orig - f).a,texture2D(sampler_blur, uv_orig - f).a,1.)*0.985 - 0./256., rawParticleProjection.b);
-		if(frame == 0.)
-		{
-			gl_FragColor *= 0.;
-		}
-
+			
 		gl_FragColor = clamp(gl_FragColor, 0., 1.);
 	}
 	</script>
@@ -2604,11 +2478,85 @@
 		return clamp( 1.-length((uv-mouse)*texSize)/16., 0. , 1.);
 	}
 
-	void main(void) {
+    void main(void) {
 
-		gl_FragColor = pow(1.-texture2D(sampler_particle_projection, uv), vec4(1.125/1.));
-        gl_FragColor = mix(gl_FragColor, vec4(1)-gl_FragColor, texture2D(sampler_sticky_scene, uv).r);
+		vec2 uv_orig = uv;
 
+		vec4 rawPrev = texture2D(sampler_prev, uv);
+		vec4 rawParticleProjection = texture2D(sampler_particle_projection, uv);
+		vec4 rawStickyScene = texture2D(sampler_sticky_scene, uv);
+		vec4 rawBlur = texture2D(sampler_blur, uv);
+		vec4 rawBlur4 = texture2D(sampler_blur4, uv);
+
+		vec2 grad4 = gradient(sampler_blur4, uv, 10.*pixelSize, vec4(0,0.,0,1));
+		//vec2 grad4 = gradientBiCubic(sampler_blur4, uv, pixelSize*4., vec4(0,0.,0,1), pixelSize * 0.5);
+		float d4 = length(grad4);
+		// angular map
+		float ang4 = atan(grad4.y, grad4.x);
+		vec3 angMap = hsl2rgb(fract(ang4*pi2_inv - time/1800.*0.), 1., 0.5);
+				
+		// expansion
+		vec2 expansion = (0.5-d4*64.)*grad4*pixelSize*256.;
+
+		vec2 uv = uv + expansion;
+		vec4 expandedParticleProjection = texture2D(sampler_particle_projection, uv);
+
+		vec3 radialMap = hsl2rgb(fract(d4*24. - time/3600.*0. + rawPrev.b*0.75 - rawPrev.g*.75), 1., 0.5);
+				
+		gl_FragColor.rgb = radialMap * rawParticleProjection.a;
+
+		// particle outlier bias
+		vec2 grad1 = gradient(sampler_blur, uv, 3.*pixelSize, vec4(0,0,0,1));
+		float d1 = length(grad1);
+		float outlierBias = max(0., min(1., rawBlur.y*128. * (1. - rawBlur4.a*8.) - 4.));
+
+		gl_FragColor = mix(gl_FragColor, vec4(radialMap, 1), outlierBias * (rawParticleProjection.g*16. ) + rawPrev.b*0.75);
+
+		float spokeCount = 5.;
+		float spokeMap = abs(fract(ang4*pi2_inv*spokeCount - d4*96. + 16. + time/1800.*0.)-0.5) * 2.;
+				
+		gl_FragColor.rgb = spokeMap*max(0.,1.-outlierBias)* radialMap * vec3(0.8);
+
+		//gl_FragColor.rgb *= 0.;
+
+		//gl_FragColor.rgb = mix(gl_FragColor.rgb, radialMap, max(rawParticleProjection.y, rawParticleProjection.y * outlierBias*16. + outlierBias*2. - 2.));
+				
+		gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(1,0.5,0)*0. + radialMap, max(rawPrev.y, rawPrev.y * outlierBias*1. + outlierBias*0.5 + rawPrev.y*0.));
+
+		//gl_FragColor.rgb = (1.-d4*8.)*vec3(1);
+
+		float shrunkParticles = texture2D(sampler_blur2, uv + expansion).a*1.5;
+
+		//gl_FragColor.rgb = (shrunkParticles -outlierBias)* vec3(1);
+
+		//gl_FragColor = rawPrev;
+
+		//vec2 grad0 = gradientBiCubic(sampler_blur4, uv_orig, pixelSize*4., vec4(0,0,0,1), pixelSize*0.5);
+		vec2 grad0 = gradient(sampler_blur4, uv_orig, pixelSize*4., vec4(0,0,0,1));
+		float d0 = length(grad4);
+		float divider = rawBlur4.a*(1.-rawBlur4.a)*d0*64.;
+		float outerLimit = 1. - max(0.,min(1.,abs(2.-d0*64.)));
+		gl_FragColor = mix(gl_FragColor, vec4(shrunkParticles*radialMap,1), divider);
+
+		gl_FragColor = rawPrev.rgba - rawParticleProjection.b; // bypass
+
+		//gl_FragColor = rawPrev.b * vec4(1);
+
+		gl_FragColor = mix(gl_FragColor, vec4(1), max(0.,rawPrev.b-0.5)*(1.-rawBlur.b)*4.);
+
+		gl_FragColor = mix(gl_FragColor*0., vec4(1), 1.-rawPrev.b);
+				
+		gl_FragColor = mix(gl_FragColor, vec4(1), rawParticleProjection);
+
+		float cut = 32./256.;
+		float topBlue = max(0., min(1., (rawPrev.b-1.+cut)/cut*2.));
+		gl_FragColor = mix(gl_FragColor, vec4(1,0,0,0), topBlue);
+		cut = 2./256.;
+		topBlue = max(0., min(1., (rawPrev.b-1.+cut)/cut));
+		gl_FragColor = mix(gl_FragColor, rawPrev.b*vec4(1), topBlue);
+
+		gl_FragColor = mix(gl_FragColor, vec4(1), rawStickyScene.x);
+				
 	}
 	// #composite end
 	</script>
@@ -2844,7 +2792,7 @@
 			gl.shaderSource(shader, str);
 			gl.compileShader(shader);
 			if (gl.getShaderParameter(shader, gl.COMPILE_STATUS) == 0)
-				alert("error compiling shader '" + id + "'\n\n" + gl.getShaderInfoLog(shader));
+				console.error("error compiling shader '" + id + "'\n\n" + gl.getShaderInfoLog(shader));
 			return shader;
 		}
 
@@ -2983,7 +2931,7 @@
 				try {
 					ext = gl.getExtension(name);
 				} catch (e) {
-					alert(e);
+					console.error(e);
 				}
 				if (!ext) {
 					alert("Meh! Y u no support " + name + " !?!)");
@@ -2994,7 +2942,7 @@
 
 			var vertexTextures = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
 
-			if (gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS) == 0) {
+			if (vertexTextures == 0) {
 				alert("Meh! Y u no support vertex shader textures !?!");
 				return;
 			} else {
@@ -3873,6 +3821,7 @@
 </head>
 <body onload="load()" ondblclick="hide()">
 	<div id="desc">
+        Ectoplasmic Tentacle Explorer
 		<br>
 		fps: <span id="fps"></span>
 		<!--
