@@ -7,127 +7,148 @@ using System.Linq;
 
 namespace Cake23.Connection.Clients.Kinect2
 {
-	public class Cake23Kinect2Client : Cake23Client
-	{
+    public class Cake23Kinect2Client : Cake23Client
+    {
 
-		protected override string Name
-		{
-			get { return "Kinect v2 Sensor"; }
-		}
+        protected override string Name
+        {
+            get { return "Kinect v2 Sensor"; }
+        }
 
-		public override string HubName
-		{
-			get { return typeof(Kinect2Hub).Name; }
-		}
+        public override string HubName
+        {
+            get { return typeof(Kinect2Hub).Name; }
+        }
 
-		private KinectSensor kinectSensor = null;
-		private CoordinateMapper coordinateMapper = null;
-		private BodyFrameReader bodyFrameReader = null;
-		private Body[] bodies = null;
+        private KinectSensor kinectSensor = null;
+        private CoordinateMapper coordinateMapper = null;
+        private BodyFrameReader bodyFrameReader = null;
+        private Body[] bodies = null;
 
-		private const float InferredZPositionClamp = 0.1f;
+        private const float InferredZPositionClamp = 0.1f;
 
-		private Face faceTracker = null;
+        private Face faceTracker = null;
 
-		private Cake23Application cake23;
+        private Cake23Application cake23;
 
-		public override void Setup(Cake23Application cake23)
-		{
-			this.cake23 = cake23;
-			kinectSensor = KinectSensor.GetDefault();
-			coordinateMapper = kinectSensor.CoordinateMapper;
-			bodyFrameReader = kinectSensor.BodyFrameSource.OpenReader();
-			kinectSensor.IsAvailableChanged += Sensor_IsAvailableChanged;
-			faceTracker = new Face(kinectSensor, bodyFrameReader);
-			faceTracker.AsJSON += faceJSON;
-			cake23.FaceTrackingChanged += faceTracker.Set;
-			kinectSensor.Open();
-			this.Log("open");
-			faceTracker.Logger = this.Logger;
-		}
+        public override void Setup(Cake23Application cake23)
+        {
+            this.cake23 = cake23;
+        }
 
-		public override void Connect(object obj = null)
-		{
-			if (CanConnect(obj))
-			{
-				base.Connect(obj);
+        public override void Connect(object obj = null)
+        {
+            if (CanConnect(obj))
+            {
+                base.Connect(obj);
 
-				if (bodyFrameReader != null)
-				{
-					bodyFrameReader.FrameArrived += Reader_FrameArrived;
-				}
-			}
-		}
+                kinectSensor = KinectSensor.GetDefault();
+                coordinateMapper = kinectSensor.CoordinateMapper;
+                bodyFrameReader = kinectSensor.BodyFrameSource.OpenReader();
+                kinectSensor.IsAvailableChanged += Sensor_IsAvailableChanged;
+                faceTracker = new Face(kinectSensor, bodyFrameReader);
+                faceTracker.AsJSON += faceJSON;
+                cake23.FaceTrackingChanged += faceTracker.Set;
+                faceTracker.Logger = this.Logger;
+                kinectSensor.Open();
+                this.Log("open");
 
-		private void Sensor_IsAvailableChanged(object sender, IsAvailableChangedEventArgs e)
-		{
-			this.Log(kinectSensor.IsAvailable ? "up and running" : "not available");
-		}
+                bodyFrameReader.FrameArrived += Reader_FrameArrived;
+            }
+        }
 
-		void faceJSON(string verticesJSON, string status, ulong TrackingId)
-		{
-			//this.Log("face vertex json string length: " + verticesJSON.Length + " (" + status + ")");
-			Invoke("OnFace", verticesJSON, status, TrackingId);
-		}
+        public override void Unconnect(object obj = null)
+        {
+            if (CanUnconnect(obj))
+            {
+                base.Unconnect(obj);
 
-		private long frame = 0;
-		private void Reader_FrameArrived(object sender, BodyFrameArrivedEventArgs e)
-		{
-			bool dataReceived = false;
+                if (faceTracker != null)
+                {
+                    faceTracker.Dispose();
+                }
 
-			using (BodyFrame bodyFrame = e.FrameReference.AcquireFrame())
-			{
-				if (bodyFrame != null)
-				{
-					if (bodies == null)
-					{
-						bodies = new Body[bodyFrame.BodyCount];
-					}
-					bodyFrame.GetAndRefreshBodyData(bodies);
-					dataReceived = true;
-					frame++;
-				}
-			}
+                if (bodyFrameReader != null)
+                {
+                    bodyFrameReader.Dispose();
+                }
 
-			if (dataReceived)
-			{
-				foreach (Body body in bodies)
-				{
-					IReadOnlyDictionary<JointType, Joint> joints = body.Joints;
+                if (kinectSensor != null)
+                {
+                    kinectSensor.Close();
+                }
+            }
+        }
 
-					Dictionary<JointType, Array> jointPoints = new Dictionary<JointType, Array>();
+        private void Sensor_IsAvailableChanged(object sender, IsAvailableChangedEventArgs e)
+        {
+            this.Log(kinectSensor.IsAvailable ? "up and running" : "not available");
+        }
 
-					foreach (JointType jointType in joints.Keys)
-					{
-						CameraSpacePoint position = joints[jointType].Position;
-						if (position.Z < 0)
-						{
-							position.Z = InferredZPositionClamp;
-						}
+        void faceJSON(string verticesJSON, string status, ulong TrackingId)
+        {
+            //this.Log("face vertex json string length: " + verticesJSON.Length + " (" + status + ")");
+            Invoke("OnFace", verticesJSON, status, TrackingId);
+        }
 
-						DepthSpacePoint depthSpacePoint = coordinateMapper.MapCameraPointToDepthSpace(position);
-						jointPoints[jointType] = new float[] { depthSpacePoint.X, depthSpacePoint.Y };
-					}
+        private long frame = 0;
+        private void Reader_FrameArrived(object sender, BodyFrameArrivedEventArgs e)
+        {
+            bool dataReceived = false;
 
-					if (IsConnected)
-					{
-						var bodyJson = JsonConvert.SerializeObject(body);
-						var projectionMappedPointsJson = "";
-						if (body.IsTracked)
-						{
-							projectionMappedPointsJson = JsonConvert.SerializeObject(jointPoints);
-							Invoke("OnBody", bodyJson, projectionMappedPointsJson);
-						}
-					}
-				}
+            using (BodyFrame bodyFrame = e.FrameReference.AcquireFrame())
+            {
+                if (bodyFrame != null)
+                {
+                    if (bodies == null)
+                    {
+                        bodies = new Body[bodyFrame.BodyCount];
+                    }
+                    bodyFrame.GetAndRefreshBodyData(bodies);
+                    dataReceived = true;
+                    frame++;
+                }
+            }
+
+            if (dataReceived)
+            {
+                foreach (Body body in bodies)
+                {
+                    IReadOnlyDictionary<JointType, Joint> joints = body.Joints;
+
+                    Dictionary<JointType, Array> jointPoints = new Dictionary<JointType, Array>();
+
+                    foreach (JointType jointType in joints.Keys)
+                    {
+                        CameraSpacePoint position = joints[jointType].Position;
+                        if (position.Z < 0)
+                        {
+                            position.Z = InferredZPositionClamp;
+                        }
+
+                        DepthSpacePoint depthSpacePoint = coordinateMapper.MapCameraPointToDepthSpace(position);
+                        jointPoints[jointType] = new float[] { depthSpacePoint.X, depthSpacePoint.Y };
+                    }
+
+                    if (IsConnected)
+                    {
+                        var bodyJson = JsonConvert.SerializeObject(body);
+                        var projectionMappedPointsJson = "";
+                        if (body.IsTracked)
+                        {
+                            projectionMappedPointsJson = JsonConvert.SerializeObject(jointPoints);
+                            Invoke("OnBody", bodyJson, projectionMappedPointsJson);
+                        }
+                    }
+                }
                 var trackedBodies = bodies.Where(b => b.IsTracked);
-                if(trackedBodies.Count() > 0)
+                if (trackedBodies.Count() > 0)
                 {
                     var trackedBodyTrackingIdsJson = JsonConvert.SerializeObject(trackedBodies.Select(b => b.TrackingId));
-				    Invoke("OnBodies", trackedBodyTrackingIdsJson, frame, UserName);
+                    Invoke("OnBodies", trackedBodyTrackingIdsJson, frame, UserName);
                 }
-			}
-		}
+            }
+        }
 
-	}
+    }
 }

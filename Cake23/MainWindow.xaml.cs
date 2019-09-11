@@ -1,5 +1,6 @@
 ﻿using Cake23.Util;
 using System;
+using System.ComponentModel;
 using System.Windows;
 
 namespace Cake23
@@ -16,7 +17,13 @@ namespace Cake23
 			cake23.Setup();
 		}
 
-		void cake23_Msg(string msg)
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            cake23.StopCommand.Execute(null);
+            base.OnClosing(e);
+        }
+
+        void cake23_Msg(string msg)
 		{
 			if (!Dispatcher.CheckAccess())
 			{

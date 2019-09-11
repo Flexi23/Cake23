@@ -243,7 +243,10 @@
     <None Include="WebTemplates\herebedragons-node17.cshtml" />
     <None Include="WebTemplates\index.cshtml" />
     <None Include="WebTemplates\herebedragons.cshtml" />
+    <None Include="WebTemplates\remote\inkstorm+physarum.cshtml" />
+    <None Include="WebTemplates\remote\inkstorm.cshtml" />
     <None Include="WebTemplates\remote\poitoy-pixel-drift.cshtml" />
+    <None Include="WebTemplates\remote\coupled-turing-pattern+physarum.cshtml" />
     <None Include="WebTemplates\remote\virtualbox.cshtml" />
     <None Include="WebTemplates\remote\poitoy-blue-ink.cshtml" />
     <None Include="WebTemplates\remote\index.cshtml" />
@@ -262,7 +265,6 @@
     <None Include="WebTemplates\drag-and-drop.cshtml" />
     <None Include="WebTemplates\particleball.cshtml" />
     <None Include="WebTemplates\simple-canvas-2d.cshtml" />
-    <None Include="WebTemplates\expansivereaction.cshtml" />
     <None Include="WebTemplates\firewater.cshtml" />
     <None Include="WebTemplates\fishes.cshtml" />
     <None Include="WebTemplates\headphase.cshtml" />
