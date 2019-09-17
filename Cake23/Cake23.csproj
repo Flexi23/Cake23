@@ -243,6 +243,7 @@
     <None Include="WebTemplates\herebedragons-node17.cshtml" />
     <None Include="WebTemplates\index.cshtml" />
     <None Include="WebTemplates\herebedragons.cshtml" />
+    <None Include="WebTemplates\remote\hodgepodge.cshtml" />
     <None Include="WebTemplates\remote\ectoplasmic-tentacle-explorer.cshtml" />
     <None Include="WebTemplates\remote\inkstorm+physarum.cshtml" />
     <None Include="WebTemplates\remote\inkstorm.cshtml" />
